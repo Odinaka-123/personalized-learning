@@ -78,13 +78,16 @@ export default function RegisterPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;1,300;1,400&family=Geist:wght@300;400;500&display=swap');
 
+        *, *::before, *::after { box-sizing: border-box; }
+
         .reg-root {
           min-height: 100vh;
+          min-height: 100dvh;
           background-color: #faf9f7;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 2rem 1.5rem;
+          padding: 2rem 1.25rem;
           font-family: 'Geist', sans-serif;
         }
 
@@ -99,12 +102,12 @@ export default function RegisterPage() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* Wordmark */
+        /* ── Wordmark ── */
         .reg-wordmark {
           display: flex;
           align-items: center;
           gap: 9px;
-          margin-bottom: 48px;
+          margin-bottom: 40px;
         }
         .reg-mark {
           width: 26px;
@@ -127,20 +130,20 @@ export default function RegisterPage() {
           letter-spacing: 0.03em;
         }
 
-        /* Heading */
+        /* ── Heading ── */
         .reg-heading {
           font-family: 'Fraunces', serif;
           font-weight: 300;
           font-size: 28px;
           color: #1c1917;
           line-height: 1.25;
-          margin-bottom: 8px;
+          margin: 0 0 8px;
         }
         .reg-sub {
           font-size: 14px;
           color: #a8a29e;
           font-weight: 300;
-          margin-bottom: 36px;
+          margin: 0 0 28px;
         }
 
         .reg-rule {
@@ -149,7 +152,7 @@ export default function RegisterPage() {
           margin: 0 0 28px;
         }
 
-        /* Fields */
+        /* ── Fields ── */
         .reg-field {
           margin-bottom: 24px;
         }
@@ -177,13 +180,18 @@ export default function RegisterPage() {
           color: #1c1917;
           outline: none;
           transition: border-color 0.2s;
-          box-sizing: border-box;
           -webkit-appearance: none;
           appearance: none;
+          /* prevent zoom on iOS — font-size >= 16px on focus */
         }
         .reg-input::placeholder { color: #c4bfba; }
         .reg-input:focus { border-bottom-color: #1c1917; }
-        .reg-input.pr { padding-right: 32px; }
+        .reg-input.pr { padding-right: 36px; }
+
+        /* prevent iOS zoom on inputs < 16px */
+        @media (max-width: 480px) {
+          .reg-input { font-size: 16px; }
+        }
 
         .reg-eye {
           position: absolute;
@@ -194,24 +202,27 @@ export default function RegisterPage() {
           border: none;
           cursor: pointer;
           color: #a8a29e;
-          padding: 4px;
+          padding: 6px;
           display: flex;
           align-items: center;
           transition: color 0.15s;
+          /* larger tap target on mobile */
+          min-width: 36px;
+          min-height: 36px;
+          justify-content: center;
         }
         .reg-eye:hover { color: #1c1917; }
 
-        /* Role toggle */
+        /* ── Role toggle ── */
         .reg-role-toggle {
           display: flex;
-          gap: 0;
           border-bottom: 1px solid #d6d3d1;
         }
         .reg-role-btn {
           flex: 1;
           background: none;
           border: none;
-          padding: 9px 0;
+          padding: 10px 0;
           font-family: 'Geist', sans-serif;
           font-size: 14px;
           font-weight: 300;
@@ -220,6 +231,8 @@ export default function RegisterPage() {
           position: relative;
           transition: color 0.2s;
           text-align: center;
+          /* larger tap target */
+          min-height: 44px;
         }
         .reg-role-btn::after {
           content: '';
@@ -240,7 +253,7 @@ export default function RegisterPage() {
           transform: scaleX(1);
         }
 
-        /* Error */
+        /* ── Error ── */
         .reg-error {
           font-size: 13px;
           color: #b45309;
@@ -249,12 +262,14 @@ export default function RegisterPage() {
           border-top: 1px solid #fde68a;
         }
 
-        /* Submit row */
+        /* ── Submit row ── */
         .reg-submit {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 16px;
           margin-top: 32px;
+          flex-wrap: wrap;
         }
         .reg-btn {
           background: #1c1917;
@@ -263,7 +278,7 @@ export default function RegisterPage() {
           font-size: 13px;
           font-weight: 500;
           letter-spacing: 0.04em;
-          padding: 11px 28px;
+          padding: 12px 28px;
           border: none;
           border-radius: 5px;
           cursor: pointer;
@@ -271,6 +286,10 @@ export default function RegisterPage() {
           display: flex;
           align-items: center;
           gap: 8px;
+          /* full-width on small screens */
+          flex: 1 1 100%;
+          justify-content: center;
+          min-height: 44px;
         }
         .reg-btn:hover:not(:disabled) { background: #292524; }
         .reg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -278,6 +297,8 @@ export default function RegisterPage() {
         .reg-login {
           font-size: 13px;
           color: #a8a29e;
+          text-align: center;
+          width: 100%;
         }
         .reg-login a {
           color: #1c1917;
@@ -289,14 +310,28 @@ export default function RegisterPage() {
         }
         .reg-login a:hover { border-color: #1c1917; }
 
-        /* Footer */
+        /* on wider screens: put button and login link side-by-side */
+        @media (min-width: 480px) {
+          .reg-btn {
+            flex: 0 0 auto;
+            width: auto;
+          }
+          .reg-login {
+            width: auto;
+            text-align: right;
+          }
+        }
+
+        /* ── Footer ── */
         .reg-footer {
-          margin-top: 56px;
+          margin-top: 48px;
           padding-top: 20px;
           border-top: 1px solid #e7e5e4;
           display: flex;
           align-items: center;
           justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 10px;
         }
         .reg-footer-copy {
           font-size: 11px;
@@ -311,8 +346,16 @@ export default function RegisterPage() {
           color: #c4bfba;
           text-decoration: none;
           transition: color 0.15s;
+          /* bigger tap targets */
+          padding: 4px 0;
         }
         .reg-footer-links a:hover { color: #78716c; }
+
+        /* ── Very small screens ── */
+        @media (max-width: 360px) {
+          .reg-heading { font-size: 24px; }
+          .reg-root { padding: 1.5rem 1rem; }
+        }
       `}</style>
 
       <main className="reg-root">
@@ -344,6 +387,7 @@ export default function RegisterPage() {
                 value={form.displayName}
                 onChange={handleChange}
                 required
+                autoComplete="name"
                 className="reg-input"
               />
             </div>
@@ -358,6 +402,8 @@ export default function RegisterPage() {
                 value={form.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
+                inputMode="email"
                 className="reg-input"
               />
             </div>
@@ -373,6 +419,7 @@ export default function RegisterPage() {
                   value={form.password}
                   onChange={handleChange}
                   required
+                  autoComplete="new-password"
                   className="reg-input pr"
                 />
                 <button
@@ -388,7 +435,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Role — inline toggle instead of select */}
+            {/* Role toggle */}
             <div className="reg-field">
               <label className="reg-label">I am a</label>
               <div className="reg-role-toggle">

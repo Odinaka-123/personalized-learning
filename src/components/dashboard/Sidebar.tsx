@@ -11,7 +11,7 @@ import {
   TrendingUp,
   User,
   LogOut,
-  Menu,
+  ChevronRight,
   X,
 } from "lucide-react";
 
@@ -159,6 +159,49 @@ export default function Sidebar() {
           text-align: left;
         }
         .sb-signout:hover { color: #dc2626; }
+
+        /* Mobile tab trigger */
+        .sb-tab {
+          position: fixed;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
+          z-index: 25;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          padding: 14px 0;
+          background: #fff;
+          border: 1px solid #e7e5e4;
+          border-left: none;
+          border-radius: 0 5px 5px 0;
+          cursor: pointer;
+          gap: 6px;
+          box-shadow: 2px 0 8px rgba(28,25,23,.06);
+          transition: width 0.15s, box-shadow 0.15s;
+        }
+        .sb-tab:hover {
+          width: 22px;
+          box-shadow: 3px 0 12px rgba(28,25,23,.10);
+        }
+        .sb-tab-dots {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          align-items: center;
+        }
+        .sb-tab-dot {
+          width: 3px; height: 3px;
+          border-radius: 50%;
+          background: #c4bfba;
+          flex-shrink: 0;
+        }
+        .sb-tab-chevron {
+          color: #c4bfba;
+          flex-shrink: 0;
+        }
       `}</style>
 
       <div className="sb-root">
@@ -208,30 +251,21 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ── Mobile hamburger ── */}
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          position: "fixed",
-          top: 16,
-          left: 16,
-          zIndex: 30,
-          width: 36,
-          height: 36,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#fff",
-          border: "1px solid #e7e5e4",
-          borderRadius: 6,
-          color: "#78716c",
-          cursor: "pointer",
-        }}
-        className="lg:hidden"
-        aria-label="Open menu"
-      >
-        <Menu size={16} />
-      </button>
+      {/* ── Mobile tab trigger (replaces hamburger) ── */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="sb-tab lg:hidden"
+          aria-label="Open menu"
+        >
+          <div className="sb-tab-dots">
+            <div className="sb-tab-dot" />
+            <div className="sb-tab-dot" />
+            <div className="sb-tab-dot" />
+          </div>
+          <ChevronRight size={10} className="sb-tab-chevron" />
+        </button>
+      )}
 
       {/* ── Mobile backdrop ── */}
       {open && (
