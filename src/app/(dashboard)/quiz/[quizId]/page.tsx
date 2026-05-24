@@ -36,14 +36,6 @@ const difficultyLabel: Record<number, string> = {
   5: "Advanced",
 };
 
-const difficultyColor: Record<number, string> = {
-  1: "text-green-400",
-  2: "text-teal-400",
-  3: "text-amber-400",
-  4: "text-orange-400",
-  5: "text-red-400",
-};
-
 export default function QuizPage() {
   const { user, loading, updateUser } = useAuthStore();
   const router = useRouter();
@@ -52,14 +44,18 @@ export default function QuizPage() {
   const [topicId, sessionId] = quizId?.split("__") ?? [];
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(
+    null,
+  );
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [answeredIds, setAnsweredIds] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [fetching, setFetching] = useState(true);
   const [completed, setCompleted] = useState(false);
-  const [difficultyChange, setDifficultyChange] = useState<"up" | "down" | null>(null);
+  const [difficultyChange, setDifficultyChange] = useState<
+    "up" | "down" | null
+  >(null);
   const [masteryScore, setMasteryScore] = useState(0);
   const [mastered, setMastered] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
@@ -103,16 +99,17 @@ export default function QuizPage() {
     setAnsweredIds(newAnsweredIds);
     setAdaptive(newAdaptive);
 
-    if (newAdaptive.currentDifficulty > prevDifficulty) {
+    if (newAdaptive.currentDifficulty > prevDifficulty)
       setDifficultyChange("up");
-    } else if (newAdaptive.currentDifficulty < prevDifficulty) {
+    else if (newAdaptive.currentDifficulty < prevDifficulty)
       setDifficultyChange("down");
-    } else {
-      setDifficultyChange(null);
-    }
+    else setDifficultyChange(null);
 
     if (newAnsweredIds.length >= Math.min(10, questions.length)) {
-      const finalMastery = calculateMastery(newAnswers, questions.filter(q => newAnsweredIds.includes(q.id)));
+      const finalMastery = calculateMastery(
+        newAnswers,
+        questions.filter((q) => newAnsweredIds.includes(q.id)),
+      );
       const isMastered = hasMastered(finalMastery, 70);
 
       setMasteryScore(finalMastery);
@@ -131,7 +128,10 @@ export default function QuizPage() {
           attempts: 1,
         });
         const { xp, streak } = await awardXP(user.uid, finalMastery);
-        const bonus = finalMastery >= 70 ? 20 : finalMastery >= 40 ? 10 : 0;
+        const bonus =
+          finalMastery >= 70 ? 20
+          : finalMastery >= 40 ? 10
+          : 0;
         setXpEarned(10 + bonus);
         updateUser({ xp, streak });
       }
@@ -141,12 +141,23 @@ export default function QuizPage() {
     const next = selectNextQuestion(
       questions,
       newAnsweredIds,
-      newAdaptive.currentDifficulty
+      newAdaptive.currentDifficulty,
     );
     setCurrentQuestion(next);
     setSelectedAnswer(null);
     setAnswered(false);
-  }, [currentQuestion, selectedAnswer, answers, answeredIds, adaptive, questions, sessionId, user, topicId, updateUser]);
+  }, [
+    currentQuestion,
+    selectedAnswer,
+    answers,
+    answeredIds,
+    adaptive,
+    questions,
+    sessionId,
+    user,
+    topicId,
+    updateUser,
+  ]);
 
   const handleSelect = (index: number) => {
     if (answered) return;
@@ -154,233 +165,620 @@ export default function QuizPage() {
     setAnswered(true);
   };
 
+  const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;1,300&family=Geist:wght@300;400;500&display=swap');
+
+    .qz-root {
+      min-height: 100vh;
+      background: #faf9f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      font-family: 'Geist', sans-serif;
+      color: #1c1917;
+    }
+
+    .qz-inner { width: 100%; max-width: 560px; }
+
+    /* ── Header ── */
+    .qz-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .qz-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .qz-brand-icon {
+      width: 28px; height: 28px;
+      border: 1px solid #e7e5e4;
+      border-radius: 6px;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      color: #78716c;
+    }
+    .qz-brand-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1c1917;
+    }
+    .qz-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .qz-difficulty-pill {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 3px;
+      background: #f5f4f2;
+      color: #78716c;
+    }
+    .qz-trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 400;
+      color: #a8a29e;
+    }
+    .qz-trend--up   { color: #166534; }
+    .qz-trend--down { color: #92400e; }
+
+    /* ── Progress bar ── */
+    .qz-track {
+      height: 2px;
+      background: #e7e5e4;
+      border-radius: 99px;
+      margin-bottom: 32px;
+      overflow: hidden;
+    }
+    .qz-fill {
+      height: 100%;
+      background: #1c1917;
+      border-radius: 99px;
+      transition: width .4s ease;
+    }
+
+    /* ── Question card ── */
+    .qz-card {
+      background: #fff;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      padding: 28px;
+    }
+    .qz-card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .qz-counter {
+      font-size: 11px;
+      font-weight: 400;
+      color: #a8a29e;
+    }
+    .qz-level-badge {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+    .qz-level-badge--1 { background: #f0fdf4; color: #166534; }
+    .qz-level-badge--2 { background: #f0fdfa; color: #0f766e; }
+    .qz-level-badge--3 { background: #fffbeb; color: #92400e; }
+    .qz-level-badge--4 { background: #fff7ed; color: #9a3412; }
+    .qz-level-badge--5 { background: #fef2f2; color: #991b1b; }
+
+    .qz-question {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 20px;
+      color: #1c1917;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    /* ── Options ── */
+    .qz-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+
+    .qz-option {
+      width: 100%;
+      text-align: left;
+      padding: 13px 16px;
+      border: 1px solid #e7e5e4;
+      border-radius: 6px;
+      background: #faf9f7;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: #1c1917;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .qz-option:hover:not(:disabled) {
+      border-color: #d6d3d1;
+      background: #f5f4f2;
+    }
+    .qz-option:disabled { cursor: default; }
+
+    .qz-option--correct {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .qz-option--wrong {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .qz-option--muted {
+      border-color: #f0ede8;
+      background: #faf9f7;
+      color: #c4bfba;
+    }
+
+    /* ── Explanation ── */
+    .qz-explanation {
+      border: 1px solid #e7e5e4;
+      border-left: 3px solid #1c1917;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      background: #fff;
+    }
+    .qz-explanation p {
+      font-size: 13px;
+      font-weight: 300;
+      color: #57534e;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* ── Next button ── */
+    .qz-next {
+      width: 100%;
+      padding: 13px;
+      background: #1c1917;
+      color: #faf9f7;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: .03em;
+    }
+    .qz-next:hover { background: #292524; }
+
+    /* ── Results ── */
+    .qz-results { text-align: center; }
+    .qz-trophy {
+      width: 64px; height: 64px;
+      border: 1px solid #e7e5e4;
+      border-radius: 12px;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      color: #78716c;
+    }
+    .qz-trophy--mastered { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+    .qz-trophy--partial  { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+
+    .qz-result-heading {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 28px;
+      color: #1c1917;
+      margin-bottom: 6px;
+    }
+    .qz-result-sub {
+      font-size: 13px;
+      font-weight: 300;
+      color: #a8a29e;
+      margin-bottom: 20px;
+    }
+
+    .qz-xp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .04em;
+      color: #92400e;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 5px 14px;
+      border-radius: 3px;
+      margin-bottom: 24px;
+    }
+
+    .qz-result-card {
+      background: #fff;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .qz-result-score-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .qz-result-score-label { font-size: 12px; font-weight: 400; color: #a8a29e; }
+    .qz-result-score-value {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 28px;
+      color: #1c1917;
+    }
+
+    .qz-result-bar-track {
+      height: 3px;
+      background: #f0ede8;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .qz-result-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .5s;
+    }
+    .qz-result-bar-fill--mastered { background: #16a34a; }
+    .qz-result-bar-fill--partial  { background: #ca8a04; }
+
+    .qz-result-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+    .qz-result-stat {
+      padding: 12px 0;
+      border-right: 1px solid #e7e5e4;
+      text-align: center;
+    }
+    .qz-result-stat:last-child { border-right: none; }
+    .qz-result-stat-value {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 20px;
+      color: #1c1917;
+    }
+    .qz-result-stat-label {
+      font-size: 10px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #a8a29e;
+      margin-top: 3px;
+    }
+
+    .qz-result-actions { display: flex; gap: 10px; }
+    .qz-btn-secondary {
+      flex: 1;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid #e7e5e4;
+      border-radius: 6px;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1c1917;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      letter-spacing: .03em;
+    }
+    .qz-btn-secondary:hover { border-color: #d6d3d1; background: #faf9f7; }
+    .qz-btn-primary {
+      flex: 1;
+      padding: 12px;
+      background: #1c1917;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Geist', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #faf9f7;
+      cursor: pointer;
+      transition: background .15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      letter-spacing: .03em;
+    }
+    .qz-btn-primary:hover { background: #292524; }
+
+    /* ── Empty / loading ── */
+    .qz-center {
+      min-height: 100vh;
+      background: #faf9f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Geist', sans-serif;
+    }
+    .qz-empty { text-align: center; }
+    .qz-empty-icon {
+      width: 48px; height: 48px;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      color: #a8a29e;
+      margin: 0 auto 16px;
+    }
+    .qz-empty-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 20px;
+      color: #1c1917;
+      margin-bottom: 6px;
+    }
+    .qz-empty-desc { font-size: 13px; font-weight: 300; color: #a8a29e; margin-bottom: 20px; }
+
+    .qz-spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #e7e5e4;
+      border-top-color: #1c1917;
+      border-radius: 50%;
+      animation: qzspin .7s linear infinite;
+    }
+    @keyframes qzspin { to { transform: rotate(360deg); } }
+  `;
+
   if (loading || fetching) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{styles}</style>
+        <div className="qz-center">
+          <div className="qz-spinner" />
+        </div>
+      </>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4 mx-auto">
-            <Brain size={28} className="text-purple-400" />
+      <>
+        <style>{styles}</style>
+        <div className="qz-center">
+          <div className="qz-empty">
+            <div className="qz-empty-icon">
+              <Brain size={20} />
+            </div>
+            <div className="qz-empty-title">No questions yet</div>
+            <p className="qz-empty-desc">
+              This topic has no quiz questions added yet.
+            </p>
+            <button
+              onClick={() => router.back()}
+              className="qz-next"
+              style={{ width: "auto", padding: "10px 24px" }}
+            >
+              Go back
+            </button>
           </div>
-          <p className="text-white font-semibold text-lg">No questions yet</p>
-          <p className="text-slate-500 text-sm mt-2">
-            This topic has no quiz questions added yet.
-          </p>
-          <button
-            onClick={() => router.back()}
-            className="mt-6 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors"
-          >
-            Go back
-          </button>
         </div>
-      </div>
+      </>
     );
   }
+
+  const correctCount = Object.entries(answers).filter(([id, ans]) => {
+    const q = questions.find((q) => q.id === id);
+    return q && ans === q.correctIndex;
+  }).length;
 
   if (completed) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto ${mastered ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
-            <Trophy size={36} className={mastered ? "text-green-400" : "text-amber-400"} />
-          </div>
-
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {mastered ? "Topic mastered!" : "Quiz complete!"}
-          </h1>
-          <p className="text-slate-500 text-sm mb-4">
-            {mastered
-              ? "Great work! You've demonstrated mastery of this topic."
-              : "Keep practising to improve your mastery score."}
-          </p>
-
-          {xpEarned > 0 && (
-            <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm font-semibold px-4 py-2 rounded-full mb-6">
-              <Star size={14} className="text-amber-400" />
-              +{xpEarned} XP earned
-            </div>
-          )}
-
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-400 text-sm">Mastery score</span>
-              <span className={`text-2xl font-bold ${mastered ? "text-green-400" : "text-amber-400"}`}>
-                {masteryScore}%
-              </span>
-            </div>
-            <div className="w-full bg-white/5 rounded-full h-2 mb-4">
+      <>
+        <style>{styles}</style>
+        <div className="qz-root">
+          <div className="qz-inner">
+            <div className="qz-results">
               <div
-                className={`h-2 rounded-full transition-all ${mastered ? "bg-green-500" : "bg-amber-500"}`}
-                style={{ width: `${masteryScore}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <p className="text-white font-bold">{answeredIds.length}</p>
-                <p className="text-slate-500 text-xs">Questions</p>
+                className={`qz-trophy ${mastered ? "qz-trophy--mastered" : "qz-trophy--partial"}`}
+              >
+                <Trophy size={28} />
               </div>
-              <div>
-                <p className="text-white font-bold">
-                  {Object.entries(answers).filter(([id, ans]) => {
-                    const q = questions.find((q) => q.id === id);
-                    return q && ans === q.correctIndex;
-                  }).length}
-                </p>
-                <p className="text-slate-500 text-xs">Correct</p>
-              </div>
-              <div>
-                <p className="text-white font-bold">
-                  {difficultyLabel[adaptive.currentDifficulty]}
-                </p>
-                <p className="text-slate-500 text-xs">Final level</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl transition-colors"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => router.push("/learn")}
-              className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              Continue learning
-              <ChevronRight size={14} />
-            </button>
+              <div className="qz-result-heading">
+                {mastered ? "Topic mastered!" : "Quiz complete!"}
+              </div>
+              <p className="qz-result-sub">
+                {mastered ?
+                  "Great work — you've demonstrated mastery of this topic."
+                : "Keep practising to improve your mastery score."}
+              </p>
+
+              {xpEarned > 0 && (
+                <div className="qz-xp-badge">
+                  <Star size={12} />+{xpEarned} XP earned
+                </div>
+              )}
+
+              <div className="qz-result-card">
+                <div className="qz-result-score-row">
+                  <span className="qz-result-score-label">Mastery score</span>
+                  <span className="qz-result-score-value">{masteryScore}%</span>
+                </div>
+                <div className="qz-result-bar-track">
+                  <div
+                    className={`qz-result-bar-fill ${mastered ? "qz-result-bar-fill--mastered" : "qz-result-bar-fill--partial"}`}
+                    style={{ width: `${masteryScore}%` }}
+                  />
+                </div>
+                <div style={{ borderTop: "1px solid #e7e5e4", paddingTop: 16 }}>
+                  <div className="qz-result-stats">
+                    <div className="qz-result-stat">
+                      <div className="qz-result-stat-value">
+                        {answeredIds.length}
+                      </div>
+                      <div className="qz-result-stat-label">Questions</div>
+                    </div>
+                    <div className="qz-result-stat">
+                      <div className="qz-result-stat-value">{correctCount}</div>
+                      <div className="qz-result-stat-label">Correct</div>
+                    </div>
+                    <div className="qz-result-stat">
+                      <div className="qz-result-stat-value">
+                        {difficultyLabel[adaptive.currentDifficulty]}
+                      </div>
+                      <div className="qz-result-stat-label">Final level</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="qz-result-actions">
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="qz-btn-secondary"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => router.push("/learn")}
+                  className="qz-btn-primary"
+                >
+                  Continue learning <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  const progress = (answeredIds.length / Math.min(10, questions.length)) * 100;
+  const quizProgress =
+    (answeredIds.length / Math.min(10, questions.length)) * 100;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
-      <div className="w-full max-w-xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center">
-              <Brain size={14} className="text-white" />
+    <>
+      <style>{styles}</style>
+      <div className="qz-root">
+        <div className="qz-inner">
+          {/* Header */}
+          <div className="qz-header">
+            <div className="qz-brand">
+              <div className="qz-brand-icon">
+                <Brain size={14} />
+              </div>
+              <span className="qz-brand-label">Adaptive quiz</span>
             </div>
-            <span className="text-white font-semibold text-sm">Adaptive quiz</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {difficultyChange === "up" && (
-              <span className="flex items-center gap-1 text-green-400 text-xs">
-                <TrendingUp size={12} /> Level up
-              </span>
-            )}
-            {difficultyChange === "down" && (
-              <span className="flex items-center gap-1 text-amber-400 text-xs">
-                <TrendingDown size={12} /> Adjusted
-              </span>
-            )}
-            {difficultyChange === null && answeredIds.length > 0 && (
-              <span className="flex items-center gap-1 text-slate-500 text-xs">
-                <Minus size={12} /> Steady
-              </span>
-            )}
-            <span className={`text-xs font-medium ${difficultyColor[adaptive.currentDifficulty]}`}>
-              {difficultyLabel[adaptive.currentDifficulty]}
-            </span>
-          </div>
-        </div>
-
-        <div className="w-full bg-white/5 rounded-full h-1.5 mb-8">
-          <div
-            className="h-1.5 rounded-full bg-purple-500 transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        {currentQuestion && (
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-slate-500 text-xs">
-                Question {answeredIds.length + 1} of {Math.min(10, questions.length)}
-              </span>
-              <span className={`text-xs px-2.5 py-1 rounded-full border ${
-                adaptive.currentDifficulty === 1 ? "text-green-400 bg-green-500/10 border-green-500/20" :
-                adaptive.currentDifficulty === 2 ? "text-teal-400 bg-teal-500/10 border-teal-500/20" :
-                adaptive.currentDifficulty === 3 ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
-                adaptive.currentDifficulty === 4 ? "text-orange-400 bg-orange-500/10 border-orange-500/20" :
-                "text-red-400 bg-red-500/10 border-red-500/20"
-              }`}>
+            <div className="qz-header-right">
+              {difficultyChange === "up" && answeredIds.length > 0 && (
+                <span className="qz-trend qz-trend--up">
+                  <TrendingUp size={12} /> Level up
+                </span>
+              )}
+              {difficultyChange === "down" && answeredIds.length > 0 && (
+                <span className="qz-trend qz-trend--down">
+                  <TrendingDown size={12} /> Adjusted
+                </span>
+              )}
+              {difficultyChange === null && answeredIds.length > 0 && (
+                <span className="qz-trend">
+                  <Minus size={12} /> Steady
+                </span>
+              )}
+              <span className="qz-difficulty-pill">
                 {difficultyLabel[adaptive.currentDifficulty]}
               </span>
             </div>
-
-            <h2 className="text-white font-semibold text-lg mb-6 leading-relaxed">
-              {currentQuestion.question}
-            </h2>
-
-            <div className="flex flex-col gap-3 mb-6">
-              {currentQuestion.options.map((option, index) => {
-                let style = "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20";
-                if (answered) {
-                  if (index === currentQuestion.correctIndex) {
-                    style = "bg-green-500/10 border-green-500/30 text-green-300";
-                  } else if (index === selectedAnswer && index !== currentQuestion.correctIndex) {
-                    style = "bg-red-500/10 border-red-500/30 text-red-300";
-                  } else {
-                    style = "bg-white/5 border-white/5 text-slate-600";
-                  }
-                } else if (selectedAnswer === index) {
-                  style = "bg-purple-500/10 border-purple-500/30 text-purple-300";
-                }
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleSelect(index)}
-                    disabled={answered}
-                    className={`w-full text-left px-5 py-4 rounded-xl border transition-all text-sm font-medium flex items-center justify-between ${style}`}
-                  >
-                    <span>{option}</span>
-                    {answered && index === currentQuestion.correctIndex && (
-                      <CheckCircle size={16} className="text-green-400 shrink-0" />
-                    )}
-                    {answered && index === selectedAnswer && index !== currentQuestion.correctIndex && (
-                      <XCircle size={16} className="text-red-400 shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {answered && currentQuestion.explanation && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-6">
-                <p className="text-blue-300 text-sm leading-relaxed">
-                  💡 {currentQuestion.explanation}
-                </p>
-              </div>
-            )}
-
-            {answered && (
-              <button
-                onClick={handleNext}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {answeredIds.length + 1 >= Math.min(10, questions.length)
-                  ? "See results"
-                  : "Next question"}
-                <ChevronRight size={14} />
-              </button>
-            )}
           </div>
-        )}
+
+          {/* Progress */}
+          <div className="qz-track">
+            <div className="qz-fill" style={{ width: `${quizProgress}%` }} />
+          </div>
+
+          {/* Question */}
+          {currentQuestion && (
+            <div className="qz-card">
+              <div className="qz-card-meta">
+                <span className="qz-counter">
+                  Question {answeredIds.length + 1} of{" "}
+                  {Math.min(10, questions.length)}
+                </span>
+                <span
+                  className={`qz-level-badge qz-level-badge--${adaptive.currentDifficulty}`}
+                >
+                  {difficultyLabel[adaptive.currentDifficulty]}
+                </span>
+              </div>
+
+              <h2 className="qz-question">{currentQuestion.question}</h2>
+
+              <div className="qz-options">
+                {currentQuestion.options.map((option, index) => {
+                  let cls = "qz-option";
+                  if (answered) {
+                    if (index === currentQuestion.correctIndex)
+                      cls += " qz-option--correct";
+                    else if (index === selectedAnswer)
+                      cls += " qz-option--wrong";
+                    else cls += " qz-option--muted";
+                  }
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleSelect(index)}
+                      disabled={answered}
+                      className={cls}
+                    >
+                      <span>{option}</span>
+                      {answered && index === currentQuestion.correctIndex && (
+                        <CheckCircle size={14} style={{ flexShrink: 0 }} />
+                      )}
+                      {answered &&
+                        index === selectedAnswer &&
+                        index !== currentQuestion.correctIndex && (
+                          <XCircle size={14} style={{ flexShrink: 0 }} />
+                        )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {answered && currentQuestion.explanation && (
+                <div className="qz-explanation">
+                  <p>{currentQuestion.explanation}</p>
+                </div>
+              )}
+
+              {answered && (
+                <button onClick={handleNext} className="qz-next">
+                  {answeredIds.length + 1 >= Math.min(10, questions.length) ?
+                    "See results"
+                  : "Next question"}
+                  <ChevronRight size={13} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

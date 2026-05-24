@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { getCourses } from "@/lib/firestore";
 import { Course } from "@/types";
-import {
-  BookOpen,
-  Search,
-  Brain,
-  ChevronRight,
-  Clock,
-  Layers,
-} from "lucide-react";
+import { Search, Layers, Clock, ArrowRight } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 export default function LearnPage() {
@@ -27,11 +20,10 @@ export default function LearnPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (user)
       getCourses()
         .then(setCourses)
         .finally(() => setFetching(false));
-    }
   }, [user]);
 
   const filtered = courses.filter(
@@ -42,97 +34,314 @@ export default function LearnPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .learn-spin-root {
+            min-height: 100vh; background: #faf9f7;
+            display: flex; align-items: center; justify-content: center;
+          }
+          .learn-spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #e7e5e4; border-top-color: #1c1917;
+            border-radius: 50%; animation: lspin 0.7s linear infinite;
+          }
+          @keyframes lspin { to { transform: rotate(360deg); } }
+        `}</style>
+        <div className="learn-spin-root">
+          <div className="learn-spinner" />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      <Sidebar />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;1,300&family=Geist:wght@300;400;500&display=swap');
 
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 min-w-0">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Browse courses
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Enrol in a course to start your adaptive learning journey
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search
-            size={15}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-          />
-          <input
-            type="text"
-            placeholder="Search courses..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors"
-          />
-        </div>
-
-        {/* Courses grid */}
-        {fetching ?
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        : filtered.length === 0 ?
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-              <BookOpen size={28} className="text-purple-400" />
-            </div>
-            <p className="text-white font-semibold text-lg">No courses yet</p>
-            <p className="text-slate-500 text-sm mt-2 max-w-sm">
-              {search ?
-                "No courses match your search."
-              : "No courses have been published yet. Check back soon!"}
-            </p>
-          </div>
-        : <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-            {filtered.map((course) => (
-              <div
-                key={course.id}
-                onClick={() => router.push(`/learn/${course.id}`)}
-                className="bg-white/5 border border-white/10 hover:border-purple-500/30 rounded-2xl p-5 sm:p-6 cursor-pointer transition-all hover:bg-white/[0.07] group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                  <Brain size={18} className="text-purple-400" />
-                </div>
-                <h3 className="text-white font-semibold mb-2 group-hover:text-purple-300 transition-colors">
-                  {course.title}
-                </h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-2">
-                  {course.description}
-                </p>
-                <div className="flex items-center gap-4 text-xs text-slate-600">
-                  <span className="flex items-center gap-1">
-                    <Layers size={11} />
-                    {course.topics?.length ?? 0} topics
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={11} />
-                    Adaptive
-                  </span>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2.5 py-1 rounded-full">
-                    Free
-                  </span>
-                  <span className="text-purple-400 text-xs flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Enrol <ChevronRight size={12} />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+        .learn-root {
+          min-height: 100vh;
+          background: #faf9f7;
+          display: flex;
+          font-family: 'Geist', sans-serif;
+          color: #1c1917;
         }
-      </main>
-    </div>
+        .learn-main {
+          flex: 1;
+          margin-left: 220px;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .learn-topbar {
+          padding: 28px 40px 24px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        .learn-heading {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 26px;
+          color: #1c1917;
+          line-height: 1.2;
+        }
+        .learn-sub {
+          font-size: 13px;
+          font-weight: 300;
+          color: #a8a29e;
+          margin-top: 4px;
+        }
+
+        /* ── Search ── */
+        .learn-search-wrap {
+          position: relative;
+          width: 260px;
+          flex-shrink: 0;
+        }
+        .learn-search-icon {
+          position: absolute;
+          left: 0; top: 50%;
+          transform: translateY(-50%);
+          color: #a8a29e;
+          pointer-events: none;
+        }
+        .learn-search {
+          width: 100%;
+          background: transparent;
+          border: none;
+          border-bottom: 1px solid #d6d3d1;
+          padding: 8px 0 8px 22px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 300;
+          color: #1c1917;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .learn-search::placeholder { color: #c4bfba; }
+        .learn-search:focus { border-bottom-color: #1c1917; }
+
+        /* ── Body ── */
+        .learn-body { padding: 32px 40px 48px; }
+
+        /* ── Loading / empty ── */
+        .learn-center {
+          display: flex; flex-direction: column;
+          align-items: flex-start; justify-content: center;
+          padding: 40px 0; gap: 6px;
+        }
+        .learn-center-title {
+          font-size: 14px; font-weight: 400; color: #78716c;
+        }
+        .learn-center-sub {
+          font-size: 13px; font-weight: 300; color: #a8a29e;
+        }
+        .learn-spinner {
+          width: 18px; height: 18px;
+          border: 2px solid #e7e5e4; border-top-color: #1c1917;
+          border-radius: 50%; animation: lspin 0.7s linear infinite;
+          margin-bottom: 8px;
+        }
+        @keyframes lspin { to { transform: rotate(360deg); } }
+
+        /* ── Course grid ── */
+        .learn-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0;
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .learn-card {
+          padding: 28px 24px;
+          border-right: 1px solid #e7e5e4;
+          border-bottom: 1px solid #e7e5e4;
+          cursor: pointer;
+          background: #fff;
+          transition: background 0.15s;
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+        /* remove right border on every 3rd card */
+        .learn-card:nth-child(3n) { border-right: none; }
+        /* remove bottom border on last row */
+        .learn-card:nth-last-child(-n+3):nth-child(3n+1),
+        .learn-card:nth-last-child(-n+3):nth-child(3n+1) ~ .learn-card {
+          border-bottom: none;
+        }
+        .learn-card:hover { background: #faf9f7; }
+
+        .learn-card-num {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 13px;
+          color: #d6d3d1;
+          margin-bottom: 20px;
+          line-height: 1;
+        }
+        .learn-card-title {
+          font-size: 14px;
+          font-weight: 500;
+          color: #1c1917;
+          margin-bottom: 8px;
+          line-height: 1.3;
+        }
+        .learn-card-desc {
+          font-size: 12px;
+          font-weight: 300;
+          color: #a8a29e;
+          line-height: 1.65;
+          flex: 1;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .learn-card-meta {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+        .learn-card-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 300;
+          color: #c4bfba;
+        }
+        .learn-card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-top: 14px;
+          border-top: 1px solid #f5f4f2;
+        }
+        .learn-card-badge {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #a8a29e;
+          background: #f5f4f2;
+          padding: 3px 8px;
+          border-radius: 3px;
+        }
+        .learn-card-cta {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          font-weight: 500;
+          color: #78716c;
+          transition: color 0.15s, gap 0.15s;
+        }
+        .learn-card:hover .learn-card-cta {
+          color: #1c1917;
+          gap: 8px;
+        }
+
+        @media (max-width: 1024px) {
+          .learn-main { margin-left: 0; }
+          .learn-topbar { padding: 20px 20px 16px; }
+          .learn-search-wrap { width: 100%; }
+          .learn-body { padding: 20px; }
+          .learn-grid { grid-template-columns: repeat(2, 1fr); }
+          .learn-card:nth-child(3n) { border-right: 1px solid #e7e5e4; }
+          .learn-card:nth-child(2n) { border-right: none; }
+        }
+        @media (max-width: 640px) {
+          .learn-grid { grid-template-columns: 1fr; }
+          .learn-card { border-right: none !important; }
+          .learn-card:last-child { border-bottom: none; }
+        }
+      `}</style>
+
+      <div className="learn-root">
+        <Sidebar />
+
+        <main className="learn-main">
+          {/* Top bar */}
+          <div className="learn-topbar">
+            <div>
+              <h1 className="learn-heading">Browse courses</h1>
+              <p className="learn-sub">
+                Enrol in a course to start your adaptive learning journey.
+              </p>
+            </div>
+            <div className="learn-search-wrap">
+              <Search size={13} className="learn-search-icon" />
+              <input
+                type="text"
+                placeholder="Search courses…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="learn-search"
+              />
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="learn-body">
+            {fetching ?
+              <div className="learn-center">
+                <div className="learn-spinner" />
+                <span className="learn-center-sub">Loading courses…</span>
+              </div>
+            : filtered.length === 0 ?
+              <div className="learn-center">
+                <p className="learn-center-title">No courses found</p>
+                <p className="learn-center-sub">
+                  {search ?
+                    "No courses match your search."
+                  : "No courses have been published yet. Check back soon."}
+                </p>
+              </div>
+            : <div className="learn-grid">
+                {filtered.map((course, i) => (
+                  <div
+                    key={course.id}
+                    className="learn-card"
+                    onClick={() => router.push(`/learn/${course.id}`)}
+                  >
+                    <div className="learn-card-num">
+                      {String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div className="learn-card-title">{course.title}</div>
+                    <div className="learn-card-desc">{course.description}</div>
+                    <div className="learn-card-meta">
+                      <span className="learn-card-meta-item">
+                        <Layers size={10} />
+                        {course.topics?.length ?? 0} topics
+                      </span>
+                      <span className="learn-card-meta-item">
+                        <Clock size={10} />
+                        Adaptive
+                      </span>
+                    </div>
+                    <div className="learn-card-footer">
+                      <span className="learn-card-badge">Free</span>
+                      <span className="learn-card-cta">
+                        Enrol <ArrowRight size={12} />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

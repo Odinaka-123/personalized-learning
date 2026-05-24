@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/authStore";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
-  GraduationCap,
   BarChart3,
   BookOpen,
   TrendingUp,
@@ -42,102 +41,263 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-2 mb-8">
-        <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center">
-          <GraduationCap size={14} className="text-white" />
-        </div>
-        <span className="font-bold text-white text-sm tracking-tight">
-          PLPAC
-        </span>
-      </div>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300&family=Geist:wght@300;400;500&display=swap');
 
-      {/* Nav */}
-      <nav className="flex flex-col gap-1 flex-1">
-        {navItems.map(({ icon: Icon, label, href }) => {
-          const active = pathname === href;
-          return (
-            <button
-              key={label}
-              onClick={() => navigate(href)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full text-left ${
-                active ?
-                  "bg-purple-600/20 text-purple-300 border border-purple-500/20"
-                : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+        .sb-root {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          font-family: 'Geist', sans-serif;
+          background: #faf9f7;
+        }
 
-      {/* User + sign out */}
-      <div className="border-t border-white/5 pt-4 mt-4">
-        <div className="flex items-center gap-3 px-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-purple-600/30 border border-purple-500/30 flex items-center justify-center text-purple-300 text-xs font-bold shrink-0">
-            {user?.displayName?.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate">
-              {user?.displayName}
-            </p>
-            <p className="text-slate-500 text-xs truncate capitalize">
-              {user?.role}
-            </p>
-          </div>
+        /* Wordmark */
+        .sb-wordmark {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 24px 20px 20px;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .sb-mark {
+          width: 24px; height: 24px;
+          border: 2px solid #1c1917;
+          border-radius: 4px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 10px; font-weight: 500; color: #1c1917;
+          flex-shrink: 0;
+        }
+        .sb-brand {
+          font-size: 13px; font-weight: 500;
+          color: #1c1917; letter-spacing: 0.03em;
+        }
+
+        /* Nav */
+        .sb-nav {
+          flex: 1;
+          padding: 12px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .sb-nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 20px;
+          width: 100%;
+          text-align: left;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #a8a29e;
+          transition: color 0.15s, background 0.15s;
+          position: relative;
+        }
+        .sb-nav-btn:hover { color: #1c1917; background: #f5f4f2; }
+        .sb-nav-btn.active {
+          color: #1c1917;
+          font-weight: 500;
+          background: #f0ede8;
+        }
+        .sb-nav-btn.active::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 6px; bottom: 6px;
+          width: 2px;
+          background: #1c1917;
+          border-radius: 0 2px 2px 0;
+        }
+        .sb-nav-icon { flex-shrink: 0; }
+
+        /* User footer */
+        .sb-footer {
+          border-top: 1px solid #e7e5e4;
+          padding: 16px 20px;
+        }
+        .sb-user {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+        .sb-avatar {
+          width: 30px; height: 30px;
+          border-radius: 50%;
+          border: 1px solid #e7e5e4;
+          background: #f0ede8;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 500; color: #78716c;
+          flex-shrink: 0;
+        }
+        .sb-user-name {
+          font-size: 12px; font-weight: 500;
+          color: #1c1917;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sb-user-role {
+          font-size: 11px; font-weight: 300;
+          color: #a8a29e;
+          text-transform: capitalize;
+        }
+        .sb-signout {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 0;
+          width: 100%;
+          background: none; border: none;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px; font-weight: 400;
+          color: #a8a29e;
+          cursor: pointer;
+          transition: color 0.15s;
+          text-align: left;
+        }
+        .sb-signout:hover { color: #dc2626; }
+      `}</style>
+
+      <div className="sb-root">
+        {/* Wordmark */}
+        <div className="sb-wordmark">
+          <div className="sb-mark">L</div>
+          <span className="sb-brand">LearnSpace</span>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm w-full"
-        >
-          <LogOut size={14} />
-          Sign out
-        </button>
+
+        {/* Nav items */}
+        <nav className="sb-nav">
+          {navItems.map(({ icon: Icon, label, href }) => {
+            const active = pathname === href;
+            return (
+              <button
+                key={label}
+                onClick={() => navigate(href)}
+                className={`sb-nav-btn${active ? " active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon size={14} className="sb-nav-icon" />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* User + sign out */}
+        <div className="sb-footer">
+          <div className="sb-user">
+            <div className="sb-avatar">
+              {user?.displayName?.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="sb-user-name">{user?.displayName}</div>
+              <div className="sb-user-role">{user?.role}</div>
+            </div>
+          </div>
+          <button onClick={handleSignOut} className="sb-signout">
+            <LogOut size={13} />
+            Sign out
+          </button>
+        </div>
       </div>
     </>
   );
 
   return (
     <>
-      {/* ── Mobile hamburger button ── */}
+      {/* ── Mobile hamburger ── */}
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-30 w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors"
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 30,
+          width: 36,
+          height: 36,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#fff",
+          border: "1px solid #e7e5e4",
+          borderRadius: 6,
+          color: "#78716c",
+          cursor: "pointer",
+        }}
+        className="lg:hidden"
         aria-label="Open menu"
       >
-        <Menu size={18} />
+        <Menu size={16} />
       </button>
 
-      {/* ── Mobile overlay backdrop ── */}
+      {/* ── Mobile backdrop ── */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-20"
+          className="lg:hidden"
           onClick={() => setOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(28,25,23,0.3)",
+            zIndex: 20,
+          }}
         />
       )}
 
       {/* ── Mobile drawer ── */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 h-full w-64 bg-[#0a0a0f] border-r border-white/5 flex flex-col py-6 px-4 z-30 transition-transform duration-300 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className="lg:hidden"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: 240,
+          borderRight: "1px solid #e7e5e4",
+          zIndex: 30,
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s ease",
+        }}
       >
-        {/* Close button */}
         <button
           onClick={() => setOpen(false)}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "none",
+            border: "none",
+            color: "#a8a29e",
+            cursor: "pointer",
+          }}
           aria-label="Close menu"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
-
         {sidebarContent}
       </aside>
 
-      {/* ── Desktop sidebar (always visible) ── */}
-      <aside className="hidden lg:flex w-60 border-r border-white/5 flex-col py-6 px-4 fixed h-full bg-[#0a0a0f] z-10">
+      {/* ── Desktop sidebar ── */}
+      <aside
+        className="hidden lg:block"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: 220,
+          borderRight: "1px solid #e7e5e4",
+          zIndex: 10,
+        }}
+      >
         {sidebarContent}
       </aside>
     </>

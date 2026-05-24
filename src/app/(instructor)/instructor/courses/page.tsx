@@ -12,7 +12,6 @@ import {
   Layers,
   Clock,
   X,
-  Loader2,
   LogOut,
   BarChart3,
   Users,
@@ -73,7 +72,7 @@ export default function InstructorCoursesPage() {
   const navItems = [
     {
       icon: BarChart3,
-      label: "Overview",
+      label: "Courses",
       href: "/instructor/courses",
       active: true,
     },
@@ -87,166 +86,712 @@ export default function InstructorCoursesPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .ic-spin { min-height:100vh; background:#faf9f7; display:flex; align-items:center; justify-content:center; }
+          .ic-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:icspin .7s linear infinite; }
+          @keyframes icspin { to { transform:rotate(360deg); } }
+        `}</style>
+        <div className="ic-spin">
+          <div className="ic-spinner" />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      {/* Instructor Sidebar — hidden on mobile/tablet, visible on desktop */}
-      <aside className="w-60 border-r border-white/5 flex-col py-6 px-4 fixed h-full bg-[#0a0a0f] z-10 hidden lg:flex">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center">
-            <GraduationCap size={14} className="text-white" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">
-            PLPAC
-          </span>
-          <span className="ml-auto text-xs bg-purple-500/20 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full">
-            Instructor
-          </span>
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=Geist:wght@300;400;500&display=swap');
 
-        <nav className="flex flex-col gap-1 flex-1">
-          {navItems.map(({ icon: Icon, label, href, active }) => (
-            <button
-              key={label}
-              onClick={() => router.push(href)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full text-left ${
-                active ?
-                  "bg-purple-600/20 text-purple-300 border border-purple-500/20"
-                : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
-        </nav>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <div className="border-t border-white/5 pt-4 mt-4">
-          <div className="flex items-center gap-3 px-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-purple-600/30 border border-purple-500/30 flex items-center justify-center text-purple-300 text-xs font-bold">
-              {user.displayName?.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">
-                {user.displayName}
-              </p>
-              <p className="text-slate-500 text-xs truncate">Instructor</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm w-full"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">
-              My courses
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              Create and manage your adaptive courses
-            </p>
-          </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors w-full sm:w-auto justify-center sm:justify-start"
-          >
-            <Plus size={16} />
-            New course
-          </button>
-        </div>
-
-        {fetching ?
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        : courses.length === 0 ?
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-              <BookOpen size={28} className="text-purple-400" />
-            </div>
-            <p className="text-white font-semibold text-lg">No courses yet</p>
-            <p className="text-slate-500 text-sm mt-2 max-w-sm">
-              Create your first adaptive course and start helping students learn
-              smarter.
-            </p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors"
-            >
-              <Plus size={15} />
-              Create first course
-            </button>
-          </div>
-        : <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                onClick={() => router.push(`/instructor/courses/${course.id}`)}
-                className="bg-white/5 border border-white/10 hover:border-purple-500/30 rounded-2xl p-5 sm:p-6 cursor-pointer transition-all hover:bg-white/[0.07] group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                  <BookOpen size={18} className="text-purple-400" />
-                </div>
-                <h3 className="text-white font-semibold mb-2 group-hover:text-purple-300 transition-colors">
-                  {course.title}
-                </h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-2">
-                  {course.description}
-                </p>
-                <div className="flex items-center gap-4 text-xs text-slate-600">
-                  <span className="flex items-center gap-1">
-                    <Layers size={11} />
-                    {course.topics?.length ?? 0} topics
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={11} />
-                    Adaptive
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+        .ic-root {
+          min-height: 100vh;
+          background: #faf9f7;
+          font-family: 'Geist', sans-serif;
+          color: #1c1917;
+          display: flex;
         }
-      </main>
+
+        /* ── Sidebar ── */
+        .ic-sidebar {
+          width: 220px;
+          flex-shrink: 0;
+          border-right: 1px solid #e7e5e4;
+          background: #fff;
+          display: flex;
+          flex-direction: column;
+          padding: 28px 16px;
+          position: fixed;
+          height: 100vh;
+          top: 0; left: 0;
+          z-index: 10;
+        }
+
+        .ic-sidebar-logo {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 8px;
+          margin-bottom: 32px;
+        }
+        .ic-sidebar-logo-icon {
+          width: 28px; height: 28px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #57534e;
+        }
+        .ic-sidebar-logo-name {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 15px;
+          color: #1c1917;
+          letter-spacing: .01em;
+        }
+        .ic-sidebar-badge {
+          margin-left: auto;
+          font-size: 9px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          color: #a8a29e;
+          border: 1px solid #e7e5e4;
+          border-radius: 3px;
+          padding: 2px 6px;
+          background: #f5f4f2;
+        }
+
+        .ic-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+        }
+        .ic-nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 9px 10px;
+          border-radius: 5px;
+          border: none;
+          background: none;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: background .12s, color .12s;
+          width: 100%;
+          text-align: left;
+          color: #a8a29e;
+        }
+        .ic-nav-btn:hover { background: #f5f4f2; color: #1c1917; }
+        .ic-nav-btn.active {
+          background: #f5f4f2;
+          color: #1c1917;
+          font-weight: 500;
+        }
+        .ic-nav-btn.active .ic-nav-dot {
+          background: #1c1917;
+        }
+        .ic-nav-dot {
+          width: 4px; height: 4px;
+          border-radius: 50%;
+          background: transparent;
+          margin-left: auto;
+          flex-shrink: 0;
+        }
+
+        .ic-sidebar-footer {
+          border-top: 1px solid #e7e5e4;
+          padding-top: 16px;
+          margin-top: 16px;
+        }
+        .ic-user-row {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 0 8px;
+          margin-bottom: 8px;
+        }
+        .ic-avatar {
+          width: 28px; height: 28px;
+          border-radius: 50%;
+          border: 1px solid #e7e5e4;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px;
+          font-weight: 500;
+          color: #78716c;
+          flex-shrink: 0;
+        }
+        .ic-user-name {
+          font-size: 12px;
+          font-weight: 500;
+          color: #1c1917;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ic-user-role {
+          font-size: 11px;
+          font-weight: 300;
+          color: #a8a29e;
+        }
+        .ic-signout-btn {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 10px;
+          border-radius: 5px;
+          border: none;
+          background: none;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px;
+          font-weight: 400;
+          color: #a8a29e;
+          cursor: pointer;
+          transition: background .12s, color .12s;
+          width: 100%;
+          text-align: left;
+        }
+        .ic-signout-btn:hover { background: #fef2f2; color: #991b1b; }
+
+        /* ── Main ── */
+        .ic-main {
+          flex: 1;
+          margin-left: 220px;
+          padding: 40px 40px 80px;
+          min-width: 0;
+        }
+
+        .ic-page-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        .ic-page-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 26px;
+          color: #1c1917;
+          line-height: 1.2;
+          margin-bottom: 4px;
+        }
+        .ic-page-desc {
+          font-size: 13px;
+          font-weight: 300;
+          color: #a8a29e;
+        }
+        .ic-new-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px;
+          font-weight: 500;
+          color: #faf9f7;
+          background: #1c1917;
+          border: none;
+          border-radius: 4px;
+          padding: 9px 18px;
+          cursor: pointer;
+          transition: background .15s;
+          letter-spacing: .03em;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .ic-new-btn:hover { background: #292524; }
+
+        /* ── Summary row ── */
+        .ic-summary {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          overflow: hidden;
+          margin-bottom: 28px;
+        }
+        .ic-summary-cell {
+          padding: 18px 20px;
+          border-right: 1px solid #e7e5e4;
+        }
+        .ic-summary-cell:last-child { border-right: none; }
+        .ic-summary-icon { color: #a8a29e; margin-bottom: 8px; }
+        .ic-summary-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 24px;
+          color: #1c1917;
+          line-height: 1;
+        }
+        .ic-summary-label {
+          font-size: 10px;
+          font-weight: 400;
+          letter-spacing: .05em;
+          text-transform: uppercase;
+          color: #a8a29e;
+          margin-top: 4px;
+        }
+
+        /* ── Section header ── */
+        .ic-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .ic-section-title {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+          color: #a8a29e;
+        }
+        .ic-section-count {
+          font-size: 11px;
+          font-weight: 300;
+          color: #c4bfba;
+        }
+
+        /* ── Course grid ── */
+        .ic-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 12px;
+        }
+
+        .ic-card {
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          padding: 20px;
+          cursor: pointer;
+          transition: border-color .15s, box-shadow .15s;
+        }
+        .ic-card:hover {
+          border-color: #d6d3d1;
+          box-shadow: 0 2px 12px rgba(28,25,23,.06);
+        }
+
+        .ic-card-icon {
+          width: 34px; height: 34px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #78716c;
+          margin-bottom: 14px;
+        }
+        .ic-card-title {
+          font-size: 14px;
+          font-weight: 500;
+          color: #1c1917;
+          margin-bottom: 6px;
+          line-height: 1.35;
+        }
+        .ic-card-desc {
+          font-size: 12px;
+          font-weight: 300;
+          color: #a8a29e;
+          line-height: 1.6;
+          margin-bottom: 16px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .ic-card-meta {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .ic-card-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 400;
+          color: #c4bfba;
+        }
+
+        /* ── Empty ── */
+        .ic-empty {
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          padding: 64px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 8px;
+        }
+        .ic-empty-icon {
+          width: 44px; height: 44px;
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          margin-bottom: 4px;
+        }
+        .ic-empty-title { font-size: 13px; font-weight: 500; color: #1c1917; }
+        .ic-empty-desc  { font-size: 12px; font-weight: 300; color: #a8a29e; max-width: 280px; line-height: 1.6; }
+        .ic-empty-btn {
+          margin-top: 16px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px;
+          font-weight: 500;
+          color: #faf9f7;
+          background: #1c1917;
+          border: none;
+          border-radius: 4px;
+          padding: 9px 18px;
+          cursor: pointer;
+          transition: background .15s;
+          letter-spacing: .03em;
+        }
+        .ic-empty-btn:hover { background: #292524; }
+
+        /* ── Fetching ── */
+        .ic-fetching {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 80px 0;
+        }
+        .ic-fetching-spinner {
+          width: 20px; height: 20px;
+          border: 2px solid #e7e5e4;
+          border-top-color: #1c1917;
+          border-radius: 50%;
+          animation: icspin .7s linear infinite;
+        }
+        @keyframes icspin { to { transform: rotate(360deg); } }
+
+        /* ── Modal ── */
+        .ic-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(28,25,23,.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+          padding: 20px;
+        }
+        .ic-modal {
+          background: #fff;
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          padding: 28px;
+          width: 100%;
+          max-width: 440px;
+        }
+        .ic-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+        }
+        .ic-modal-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 20px;
+          color: #1c1917;
+        }
+        .ic-modal-close {
+          width: 28px; height: 28px;
+          border: 1px solid #e7e5e4;
+          border-radius: 4px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          cursor: pointer;
+          transition: background .12s, color .12s;
+        }
+        .ic-modal-close:hover { background: #edeae6; color: #1c1917; }
+
+        .ic-form { display: flex; flex-direction: column; gap: 18px; }
+        .ic-field { display: flex; flex-direction: column; gap: 6px; }
+        .ic-label {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          color: #78716c;
+        }
+        .ic-input, .ic-textarea {
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #1c1917;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          padding: 10px 12px;
+          transition: border-color .15s;
+          width: 100%;
+        }
+        .ic-input::placeholder, .ic-textarea::placeholder { color: #c4bfba; }
+        .ic-input:focus, .ic-textarea:focus { outline: none; border-color: #1c1917; }
+        .ic-textarea { resize: vertical; }
+
+        .ic-error {
+          border: 1px solid #fecaca;
+          background: #fef2f2;
+          border-radius: 5px;
+          padding: 10px 14px;
+          font-size: 13px;
+          color: #991b1b;
+        }
+
+        .ic-modal-actions { display: flex; gap: 10px; }
+        .ic-btn-cancel {
+          flex: 1;
+          padding: 11px;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #57534e;
+          cursor: pointer;
+          transition: background .12s, border-color .12s;
+          letter-spacing: .02em;
+        }
+        .ic-btn-cancel:hover { background: #f0ede8; border-color: #d6d3d1; }
+        .ic-btn-submit {
+          flex: 1;
+          padding: 11px;
+          background: #1c1917;
+          border: none;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #faf9f7;
+          cursor: pointer;
+          transition: background .15s;
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          letter-spacing: .02em;
+        }
+        .ic-btn-submit:hover:not(:disabled) { background: #292524; }
+        .ic-btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+        .ic-spin-icon {
+          width: 13px; height: 13px;
+          border: 1.5px solid rgba(255,255,255,.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: icspin .7s linear infinite;
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 1024px) {
+          .ic-sidebar { display: none; }
+          .ic-main { margin-left: 0; padding: 24px 20px 60px; }
+          .ic-page-header { flex-direction: column; align-items: stretch; }
+          .ic-new-btn { width: 100%; justify-content: center; }
+          .ic-summary { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 480px) {
+          .ic-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
+
+      <div className="ic-root">
+        {/* Sidebar */}
+        <aside className="ic-sidebar">
+          <div className="ic-sidebar-logo">
+            <div className="ic-sidebar-logo-icon">
+              <GraduationCap size={13} />
+            </div>
+            <span className="ic-sidebar-logo-name">PLPAC</span>
+            <span className="ic-sidebar-badge">Instructor</span>
+          </div>
+
+          <nav className="ic-nav">
+            {navItems.map(({ icon: Icon, label, href, active }) => (
+              <button
+                key={label}
+                className={`ic-nav-btn${active ? " active" : ""}`}
+                onClick={() => router.push(href)}
+              >
+                <Icon size={14} />
+                {label}
+                <span className="ic-nav-dot" />
+              </button>
+            ))}
+          </nav>
+
+          <div className="ic-sidebar-footer">
+            <div className="ic-user-row">
+              <div className="ic-avatar">
+                {user.displayName?.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="ic-user-name">{user.displayName}</div>
+                <div className="ic-user-role">Instructor</div>
+              </div>
+            </div>
+            <button className="ic-signout-btn" onClick={handleSignOut}>
+              <LogOut size={13} />
+              Sign out
+            </button>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <main className="ic-main">
+          {/* Page header */}
+          <div className="ic-page-header">
+            <div>
+              <h1 className="ic-page-title">My courses</h1>
+              <p className="ic-page-desc">
+                Create and manage your adaptive courses
+              </p>
+            </div>
+            <button className="ic-new-btn" onClick={() => setShowModal(true)}>
+              <Plus size={13} />
+              New course
+            </button>
+          </div>
+
+          {/* Summary stats */}
+          {!fetching && (
+            <div className="ic-summary">
+              {[
+                {
+                  icon: BookOpen,
+                  value: courses.length,
+                  label: "Total courses",
+                },
+                {
+                  icon: Layers,
+                  value: courses.reduce(
+                    (a, c) => a + (c.topics?.length ?? 0),
+                    0,
+                  ),
+                  label: "Total topics",
+                },
+                {
+                  icon: Clock,
+                  value: courses.length > 0 ? "Active" : "—",
+                  label: "Status",
+                },
+              ].map(({ icon: Icon, value, label }) => (
+                <div key={label} className="ic-summary-cell">
+                  <Icon size={13} className="ic-summary-icon" />
+                  <div className="ic-summary-value">{value}</div>
+                  <div className="ic-summary-label">{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Section header */}
+          <div className="ic-section-header">
+            <span className="ic-section-title">Courses</span>
+            {!fetching && (
+              <span className="ic-section-count">{courses.length} total</span>
+            )}
+          </div>
+
+          {/* Content */}
+          {fetching ?
+            <div className="ic-fetching">
+              <div className="ic-fetching-spinner" />
+            </div>
+          : courses.length === 0 ?
+            <div className="ic-empty">
+              <div className="ic-empty-icon">
+                <BookOpen size={18} />
+              </div>
+              <div className="ic-empty-title">No courses yet</div>
+              <p className="ic-empty-desc">
+                Create your first adaptive course and start helping students
+                learn smarter.
+              </p>
+              <button
+                className="ic-empty-btn"
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={13} />
+                Create first course
+              </button>
+            </div>
+          : <div className="ic-grid">
+              {courses.map((course) => (
+                <div
+                  key={course.id}
+                  className="ic-card"
+                  onClick={() =>
+                    router.push(`/instructor/courses/${course.id}`)
+                  }
+                >
+                  <div className="ic-card-icon">
+                    <BookOpen size={15} />
+                  </div>
+                  <div className="ic-card-title">{course.title}</div>
+                  <p className="ic-card-desc">{course.description}</p>
+                  <div className="ic-card-meta">
+                    <span className="ic-card-meta-item">
+                      <Layers size={11} />
+                      {course.topics?.length ?? 0} topics
+                    </span>
+                    <span className="ic-card-meta-item">
+                      <Clock size={11} />
+                      Adaptive
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          }
+        </main>
+      </div>
 
       {/* Create course modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-[#111118] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-md">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white font-bold text-lg">
-                Create new course
-              </h2>
+        <div
+          className="ic-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowModal(false);
+              setError("");
+            }
+          }}
+        >
+          <div className="ic-modal">
+            <div className="ic-modal-header">
+              <span className="ic-modal-title">New course</span>
               <button
+                className="ic-modal-close"
                 onClick={() => {
                   setShowModal(false);
                   setError("");
                 }}
-                className="text-slate-500 hover:text-white transition-colors"
               >
-                <X size={18} />
+                <X size={13} />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Course title
-                </label>
+            <form className="ic-form" onSubmit={handleCreate}>
+              <div className="ic-field">
+                <label className="ic-label">Course title</label>
                 <input
+                  className="ic-input"
                   type="text"
                   placeholder="e.g. Introduction to Data Structures"
                   value={form.title}
@@ -254,15 +799,13 @@ export default function InstructorCoursesPage() {
                     setForm((p) => ({ ...p, title: e.target.value }))
                   }
                   required
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Description
-                </label>
+              <div className="ic-field">
+                <label className="ic-label">Description</label>
                 <textarea
+                  className="ic-textarea"
                   placeholder="What will students learn in this course?"
                   value={form.description}
                   onChange={(e) =>
@@ -270,40 +813,35 @@ export default function InstructorCoursesPage() {
                   }
                   required
                   rows={4}
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors resize-none"
                 />
               </div>
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
+              {error && <div className="ic-error">{error}</div>}
 
-              <div className="flex gap-3 mt-1">
+              <div className="ic-modal-actions">
                 <button
                   type="button"
+                  className="ic-btn-cancel"
                   onClick={() => {
                     setShowModal(false);
                     setError("");
                   }}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="ic-btn-submit"
                   disabled={creating}
-                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
-                  {creating && <Loader2 size={14} className="animate-spin" />}
-                  {creating ? "Creating..." : "Create course"}
+                  {creating && <div className="ic-spin-icon" />}
+                  {creating ? "Creating…" : "Create course"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

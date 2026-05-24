@@ -23,14 +23,6 @@ import {
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-const difficultyColor: Record<number, string> = {
-  1: "text-green-400 bg-green-500/10 border-green-500/20",
-  2: "text-teal-400 bg-teal-500/10 border-teal-500/20",
-  3: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  4: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  5: "text-red-400 bg-red-500/10 border-red-500/20",
-};
-
 const difficultyLabel: Record<number, string> = {
   1: "Beginner",
   2: "Easy",
@@ -65,7 +57,6 @@ export default function InstructorAnalyticsPage() {
       router.replace("/dashboard");
   }, [user, loading, router]);
 
-  // Depend on user (not just user.uid) to satisfy exhaustive-deps
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -110,7 +101,6 @@ export default function InstructorAnalyticsPage() {
                 )
               : 0;
             const totalAttempts = rows.reduce((a, p) => a + p.attempts, 0);
-
             return {
               topic,
               courseName,
@@ -131,7 +121,7 @@ export default function InstructorAnalyticsPage() {
     }
 
     load();
-  }, [user]); // ← was [user?.uid], now the full user object
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -139,26 +129,10 @@ export default function InstructorAnalyticsPage() {
     router.replace("/login");
   };
 
-  const navItems = [
-    {
-      icon: BarChart3,
-      label: "Overview",
-      href: "/instructor/courses",
-      active: false,
-    },
-    {
-      icon: Users,
-      label: "Analytics",
-      href: "/instructor/analytics",
-      active: true,
-    },
-  ];
-
   const filtered =
     selectedCourse === "all" ? stats : (
       stats.filter((s) => s.courseId === selectedCourse)
     );
-
   const totalMastered = filtered.reduce((a, s) => a + s.masteredCount, 0);
   const totalStruggling = filtered.reduce((a, s) => a + s.strugglingCount, 0);
   const overallAvg =
@@ -168,274 +142,600 @@ export default function InstructorAnalyticsPage() {
       )
     : 0;
 
+  const barColor = (score: number) =>
+    score >= 70 ? "#16a34a"
+    : score >= 40 ? "#ca8a04"
+    : "#dc2626";
+  const scoreColor = (score: number) =>
+    score >= 70 ? "#166534"
+    : score >= 40 ? "#92400e"
+    : "#991b1b";
+
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .ia-spin { min-height:100vh; background:#faf9f7; display:flex; align-items:center; justify-content:center; }
+          .ia-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:iaspin .7s linear infinite; }
+          @keyframes iaspin { to { transform:rotate(360deg); } }
+        `}</style>
+        <div className="ia-spin">
+          <div className="ia-spinner" />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      {/* Instructor Sidebar */}
-      <aside className="w-60 border-r border-white/5 flex-col py-6 px-4 fixed h-full bg-[#0a0a0f] z-10 hidden lg:flex">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center">
-            <GraduationCap size={14} className="text-white" />
-          </div>
-          <span className="font-bold text-white text-sm tracking-tight">
-            PLPAC
-          </span>
-          <span className="ml-auto text-xs bg-purple-500/20 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full">
-            Instructor
-          </span>
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=Geist:wght@300;400;500&display=swap');
 
-        <nav className="flex flex-col gap-1 flex-1">
-          {navItems.map(({ icon: Icon, label, href, active }) => (
-            <button
-              key={label}
-              onClick={() => router.push(href)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full text-left ${
-                active ?
-                  "bg-purple-600/20 text-purple-300 border border-purple-500/20"
-                : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
-        </nav>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <div className="border-t border-white/5 pt-4 mt-4">
-          <div className="flex items-center gap-3 px-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-purple-600/30 border border-purple-500/30 flex items-center justify-center text-purple-300 text-xs font-bold">
-              {user.displayName?.charAt(0).toUpperCase()}
+        .ia-root { min-height:100vh; background:#faf9f7; display:flex; font-family:'Geist',sans-serif; color:#1c1917; }
+
+        /* ── Sidebar ── */
+        .ia-sidebar {
+          width: 220px;
+          flex-shrink: 0;
+          border-right: 1px solid #e7e5e4;
+          display: flex;
+          flex-direction: column;
+          position: fixed;
+          height: 100%;
+          background: #faf9f7;
+          z-index: 10;
+        }
+
+        .ia-brand {
+          padding: 24px 20px 20px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .ia-brand-icon {
+          width: 28px; height: 28px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #78716c;
+        }
+        .ia-brand-name { font-size:13px; font-weight:500; color:#1c1917; }
+        .ia-brand-badge {
+          margin-left: auto;
+          font-size: 9px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          color: #78716c;
+          background: #f0ede8;
+          padding: 2px 7px;
+          border-radius: 3px;
+        }
+
+        .ia-nav { flex: 1; padding: 12px 12px 0; display: flex; flex-direction: column; gap: 2px; }
+
+        .ia-nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 10px;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #78716c;
+          background: none;
+          border: none;
+          cursor: pointer;
+          width: 100%;
+          text-align: left;
+          transition: background .12s, color .12s;
+        }
+        .ia-nav-btn:hover     { background: #f0ede8; color: #1c1917; }
+        .ia-nav-btn.active    { background: #f0ede8; color: #1c1917; font-weight: 500; }
+
+        .ia-sidebar-footer {
+          padding: 16px 12px;
+          border-top: 1px solid #e7e5e4;
+        }
+        .ia-user-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 4px;
+          margin-bottom: 8px;
+        }
+        .ia-user-avatar {
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          border: 1px solid #e7e5e4;
+          background: #f0ede8;
+          display: flex; align-items: center; justify-content: center;
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size: 14px;
+          color: #78716c;
+          flex-shrink: 0;
+        }
+        .ia-user-name  { font-size:12px; font-weight:500; color:#1c1917; }
+        .ia-user-role  { font-size:11px; font-weight:300; color:#a8a29e; }
+        .ia-signout {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px;
+          font-weight: 400;
+          color: #a8a29e;
+          background: none;
+          border: none;
+          cursor: pointer;
+          width: 100%;
+          text-align: left;
+          transition: background .12s, color .12s;
+        }
+        .ia-signout:hover { background: #fef2f2; color: #991b1b; }
+
+        /* ── Main ── */
+        .ia-main { flex:1; margin-left:220px; min-width:0; display:flex; flex-direction:column; }
+
+        /* ── Top bar ── */
+        .ia-topbar {
+          padding: 28px 40px 24px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        .ia-heading {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size: 26px;
+          color: #1c1917; line-height: 1.2;
+        }
+        .ia-sub { font-size:13px; font-weight:300; color:#a8a29e; margin-top:4px; }
+
+        .ia-select {
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #1c1917;
+          background: #fff;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          padding: 8px 12px;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+          padding-right: 30px;
+          transition: border-color .15s;
+          flex-shrink: 0;
+        }
+        .ia-select:focus { outline: none; border-color: #1c1917; }
+
+        /* ── Body layout ── */
+        .ia-body {
+          display: grid;
+          grid-template-columns: 260px 1fr;
+          flex: 1;
+        }
+
+        /* ── Left stats panel ── */
+        .ia-left {
+          border-right: 1px solid #e7e5e4;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .ia-stats { display: grid; grid-template-columns: 1fr 1fr; }
+        .ia-stat {
+          padding: 20px 20px;
+          border-right: 1px solid #e7e5e4;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .ia-stat:nth-child(2n)        { border-right: none; }
+        .ia-stat:nth-last-child(-n+2) { border-bottom: none; }
+        .ia-stat-icon  { color:#a8a29e; margin-bottom:8px; }
+        .ia-stat-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size:24px;
+          color:#1c1917; line-height:1;
+        }
+        .ia-stat-label {
+          font-size:10px; font-weight:400;
+          letter-spacing:.05em; text-transform:uppercase;
+          color:#a8a29e; margin-top:5px;
+        }
+
+        /* summary block at bottom of left */
+        .ia-summary-block {
+          margin-top: auto;
+          padding: 20px;
+          border-top: 1px solid #e7e5e4;
+        }
+        .ia-summary-label { font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:#a8a29e; margin-bottom:8px; }
+        .ia-summary-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size:32px;
+          color:#1c1917; line-height:1;
+        }
+        .ia-summary-sub { font-size:12px; font-weight:300; color:#c4bfba; margin-top:4px; }
+
+        /* ── Right panel ── */
+        .ia-right { padding: 28px 32px; }
+
+        .ia-section-label {
+          font-size:11px; font-weight:500;
+          letter-spacing:.08em; text-transform:uppercase;
+          color:#a8a29e; margin-bottom:16px;
+        }
+
+        /* Table card */
+        .ia-table-card {
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .ia-table-header {
+          padding: 14px 20px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .ia-table-title { font-size:12px; font-weight:500; color:#57534e; }
+        .ia-table-hint  { font-size:11px; font-weight:300; color:#c4bfba; }
+
+        .ia-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 14px 20px;
+          border-bottom: 1px solid #f0ede8;
+        }
+        .ia-row:last-child { border-bottom: none; }
+
+        .ia-row-left { flex: 1; min-width: 0; }
+        .ia-row-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: #1c1917;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 2px;
+        }
+        .ia-row-course {
+          font-size: 11px;
+          font-weight: 300;
+          color: #a8a29e;
+        }
+        .ia-row-tags { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+
+        .ia-diff-badge {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: .05em;
+          text-transform: uppercase;
+          padding: 2px 7px;
+          border-radius: 3px;
+          background: #f5f4f2;
+          color: #78716c;
+        }
+
+        /* Mastery bar */
+        .ia-mastery-col { width: 140px; flex-shrink: 0; }
+        .ia-mastery-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 5px;
+        }
+        .ia-mastery-label { font-size:10px; font-weight:400; color:#a8a29e; }
+        .ia-mastery-pct {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 14px;
+        }
+        .ia-bar-track { height:2px; background:#f0ede8; border-radius:99px; overflow:hidden; }
+        .ia-bar-fill  { height:100%; border-radius:99px; }
+
+        /* Counters */
+        .ia-counters { display:flex; align-items:center; gap:20px; flex-shrink:0; }
+        .ia-counter { text-align:center; }
+        .ia-counter-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size:16px;
+          color:#1c1917; line-height:1;
+        }
+        .ia-counter-label {
+          font-size:10px; font-weight:400;
+          text-transform:uppercase; letter-spacing:.05em;
+          color:#a8a29e; margin-top:3px;
+        }
+        .ia-counter-value--green { color:#166534; }
+        .ia-counter-value--red   { color:#991b1b; }
+
+        /* Empty */
+        .ia-empty {
+          padding: 48px 20px;
+          display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+        }
+        .ia-empty-icon {
+          width: 40px; height: 40px;
+          border: 1px solid #e7e5e4;
+          border-radius: 7px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          margin-bottom: 4px;
+        }
+        .ia-empty-title { font-size:13px; font-weight:500; color:#1c1917; }
+        .ia-empty-desc  { font-size:12px; font-weight:300; color:#a8a29e; }
+
+        /* Loading */
+        .ia-loading { display:flex; align-items:center; justify-content:center; padding:60px 0; }
+        .ia-spinner { width:18px; height:18px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:iaspin .7s linear infinite; }
+        @keyframes iaspin { to { transform:rotate(360deg); } }
+
+        @media (max-width:1024px) {
+          .ia-sidebar { display:none; }
+          .ia-main    { margin-left:0; }
+          .ia-topbar  { padding:20px; flex-wrap:wrap; }
+          .ia-body    { grid-template-columns:1fr; }
+          .ia-left    { border-right:none; border-bottom:1px solid #e7e5e4; }
+          .ia-stats   { grid-template-columns: repeat(4,1fr); }
+          .ia-stat:nth-child(2n)        { border-right:1px solid #e7e5e4; }
+          .ia-stat:nth-child(4n)        { border-right:none; }
+          .ia-right   { padding:20px; }
+          .ia-mastery-col { display:none; }
+          .ia-counters { gap:12px; }
+        }
+        @media (max-width:600px) {
+          .ia-stats { grid-template-columns:1fr 1fr; }
+          .ia-stat:nth-child(2n) { border-right:none; }
+        }
+      `}</style>
+
+      <div className="ia-root">
+        {/* ── Sidebar ── */}
+        <aside className="ia-sidebar">
+          <div className="ia-brand">
+            <div className="ia-brand-icon">
+              <GraduationCap size={14} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">
-                {user.displayName}
-              </p>
-              <p className="text-slate-500 text-xs truncate">Instructor</p>
-            </div>
+            <span className="ia-brand-name">PLPAC</span>
+            <span className="ia-brand-badge">Instructor</span>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm w-full"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
-        </div>
-      </aside>
 
-      {/* Main */}
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 min-w-0">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">
-              Analytics
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              Student progress across all your courses
-            </p>
-          </div>
-          <select
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors w-full sm:w-auto"
-          >
-            <option value="all" className="bg-[#111118]">
-              All courses
-            </option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id} className="bg-[#111118]">
-                {c.title}
-              </option>
+          <nav className="ia-nav">
+            {[
+              {
+                icon: BarChart3,
+                label: "Overview",
+                href: "/instructor/courses",
+                active: false,
+              },
+              {
+                icon: Users,
+                label: "Analytics",
+                href: "/instructor/analytics",
+                active: true,
+              },
+            ].map(({ icon: Icon, label, href, active }) => (
+              <button
+                key={label}
+                onClick={() => router.push(href)}
+                className={`ia-nav-btn${active ? " active" : ""}`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
             ))}
-          </select>
-        </div>
+          </nav>
 
-        {/* Summary stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {[
-            {
-              label: "Topics tracked",
-              value: filtered.length,
-              icon: BookOpen,
-              color: "text-blue-400",
-              bg: "bg-blue-500/10 border-blue-500/20",
-            },
-            {
-              label: "Avg mastery",
-              value: fetching ? "—" : `${overallAvg}%`,
-              icon: TrendingUp,
-              color: "text-purple-400",
-              bg: "bg-purple-500/10 border-purple-500/20",
-            },
-            {
-              label: "Mastered",
-              value: fetching ? "—" : totalMastered,
-              icon: CheckCircle2,
-              color: "text-emerald-400",
-              bg: "bg-emerald-500/10 border-emerald-500/20",
-            },
-            {
-              label: "Struggling",
-              value: fetching ? "—" : totalStruggling,
-              icon: AlertTriangle,
-              color: "text-red-400",
-              bg: "bg-red-500/10 border-red-500/20",
-            },
-          ].map(({ label, value, icon: Icon, color, bg }) => (
-            <div
-              key={label}
-              className={`rounded-2xl border p-4 sm:p-5 ${bg} flex flex-col gap-3`}
-            >
-              <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
-                <Icon size={18} className={color} />
+          <div className="ia-sidebar-footer">
+            <div className="ia-user-row">
+              <div className="ia-user-avatar">
+                {user.displayName?.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-xl sm:text-2xl font-bold text-white">
-                  {value}
-                </p>
-                <p className="text-slate-500 text-xs mt-0.5">{label}</p>
+                <div className="ia-user-name">{user.displayName}</div>
+                <div className="ia-user-role">Instructor</div>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Topic breakdown */}
-        {fetching ?
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <button onClick={handleSignOut} className="ia-signout">
+              <LogOut size={13} />
+              Sign out
+            </button>
           </div>
-        : filtered.length === 0 ?
-          <div className="flex flex-col items-center justify-center py-24 text-center bg-white/5 border border-white/10 rounded-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-              <Brain size={20} className="text-purple-400" />
+        </aside>
+
+        <main className="ia-main">
+          {/* ── Top bar ── */}
+          <div className="ia-topbar">
+            <div>
+              <h1 className="ia-heading">Analytics</h1>
+              <p className="ia-sub">
+                Student progress across all your courses.
+              </p>
             </div>
-            <p className="text-slate-400 text-sm font-medium">No data yet</p>
-            <p className="text-slate-600 text-xs mt-1">
-              Students need to attempt quizzes before analytics appear
-            </p>
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="ia-select"
+            >
+              <option value="all">All courses</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
           </div>
-        : <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-            <div className="px-4 sm:px-6 py-4 border-b border-white/5">
-              <h2 className="text-white font-semibold text-sm">
-                Topic breakdown — sorted by lowest mastery first
-              </h2>
-            </div>
-            <div className="divide-y divide-white/5">
-              {filtered
-                .sort((a, b) => a.avgMastery - b.avgMastery)
-                .map((s) => (
-                  <div
-                    key={s.topic.id}
-                    className="px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="text-white text-sm font-medium truncate">
-                          {s.topic.title}
-                        </p>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${difficultyColor[s.topic.difficultyLevel]}`}
-                        >
-                          {difficultyLabel[s.topic.difficultyLevel]}
-                        </span>
-                      </div>
-                      <p className="text-slate-500 text-xs truncate">
-                        {s.courseName}
-                      </p>
-                      {/* Mastery bar visible on mobile inline */}
-                      <div className="mt-2 flex items-center gap-2 md:hidden">
-                        <div className="flex-1 bg-white/5 rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full transition-all ${
-                              s.avgMastery >= 70 ? "bg-emerald-500"
-                              : s.avgMastery >= 40 ? "bg-amber-500"
-                              : "bg-red-500"
-                            }`}
-                            style={{ width: `${s.avgMastery}%` }}
-                          />
-                        </div>
-                        <span
-                          className={`text-xs font-bold shrink-0 ${
-                            s.avgMastery >= 70 ? "text-emerald-400"
-                            : s.avgMastery >= 40 ? "text-amber-400"
-                            : "text-red-400"
-                          }`}
-                        >
-                          {s.avgMastery}%
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Mastery bar — tablet+ */}
-                    <div className="w-36 hidden md:block shrink-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-slate-500">
-                          Avg mastery
-                        </span>
-                        <span
-                          className={`text-xs font-bold ${
-                            s.avgMastery >= 70 ? "text-emerald-400"
-                            : s.avgMastery >= 40 ? "text-amber-400"
-                            : "text-red-400"
-                          }`}
-                        >
-                          {s.avgMastery}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-white/5 rounded-full h-1.5">
-                        <div
-                          className={`h-1.5 rounded-full transition-all ${
-                            s.avgMastery >= 70 ? "bg-emerald-500"
-                            : s.avgMastery >= 40 ? "bg-amber-500"
-                            : "bg-red-500"
-                          }`}
-                          style={{ width: `${s.avgMastery}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Counters */}
-                    <div className="flex items-center gap-3 sm:gap-5 shrink-0">
-                      <div className="text-center hidden lg:block">
-                        <p className="text-white text-sm font-bold">
-                          {s.uniqueStudents}
-                        </p>
-                        <p className="text-slate-600 text-xs">Students</p>
-                      </div>
-                      <div className="text-center hidden lg:block">
-                        <p className="text-emerald-400 text-sm font-bold">
-                          {s.masteredCount}
-                        </p>
-                        <p className="text-slate-600 text-xs">Mastered</p>
-                      </div>
-                      <div className="text-center hidden lg:block">
-                        <p className="text-red-400 text-sm font-bold">
-                          {s.strugglingCount}
-                        </p>
-                        <p className="text-slate-600 text-xs">Struggling</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-white text-sm font-bold">
-                          {s.totalAttempts}
-                        </p>
-                        <p className="text-slate-600 text-xs">Attempts</p>
-                      </div>
-                    </div>
+          <div className="ia-body">
+            {/* ── Left stats panel ── */}
+            <div className="ia-left">
+              <div className="ia-stats">
+                {[
+                  {
+                    label: "Topics tracked",
+                    value: filtered.length,
+                    icon: BookOpen,
+                  },
+                  {
+                    label: "Avg mastery",
+                    value: fetching ? "—" : `${overallAvg}%`,
+                    icon: TrendingUp,
+                  },
+                  {
+                    label: "Mastered",
+                    value: fetching ? "—" : totalMastered,
+                    icon: CheckCircle2,
+                  },
+                  {
+                    label: "Struggling",
+                    value: fetching ? "—" : totalStruggling,
+                    icon: AlertTriangle,
+                  },
+                ].map(({ label, value, icon: Icon }) => (
+                  <div key={label} className="ia-stat">
+                    <Icon size={13} className="ia-stat-icon" />
+                    <div className="ia-stat-value">{value}</div>
+                    <div className="ia-stat-label">{label}</div>
                   </div>
                 ))}
+              </div>
+
+              <div className="ia-summary-block">
+                <div className="ia-summary-label">Topics shown</div>
+                <div className="ia-summary-value">{filtered.length}</div>
+                <div className="ia-summary-sub">
+                  {selectedCourse === "all" ?
+                    "Across all courses"
+                  : (courses.find((c) => c.id === selectedCourse)?.title ?? "")}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Right panel ── */}
+            <div className="ia-right">
+              <div className="ia-section-label">
+                Topic breakdown — lowest mastery first
+              </div>
+
+              {fetching ?
+                <div className="ia-loading">
+                  <div className="ia-spinner" />
+                </div>
+              : filtered.length === 0 ?
+                <div className="ia-table-card">
+                  <div className="ia-empty">
+                    <div className="ia-empty-icon">
+                      <Brain size={16} />
+                    </div>
+                    <div className="ia-empty-title">No data yet</div>
+                    <p className="ia-empty-desc">
+                      Students need to attempt quizzes before analytics appear.
+                    </p>
+                  </div>
+                </div>
+              : <div className="ia-table-card">
+                  <div className="ia-table-header">
+                    <span className="ia-table-title">
+                      {filtered.length} topic{filtered.length !== 1 ? "s" : ""}
+                    </span>
+                    <span className="ia-table-hint">
+                      Sorted by avg mastery ↑
+                    </span>
+                  </div>
+
+                  <div>
+                    {[...filtered]
+                      .sort((a, b) => a.avgMastery - b.avgMastery)
+                      .map((s) => (
+                        <div key={s.topic.id} className="ia-row">
+                          {/* Left: name + course + badge */}
+                          <div className="ia-row-left">
+                            <div className="ia-row-name">{s.topic.title}</div>
+                            <div className="ia-row-course">{s.courseName}</div>
+                            <div className="ia-row-tags">
+                              <span className="ia-diff-badge">
+                                {difficultyLabel[s.topic.difficultyLevel]}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Mastery bar */}
+                          <div className="ia-mastery-col">
+                            <div className="ia-mastery-row">
+                              <span className="ia-mastery-label">
+                                Avg mastery
+                              </span>
+                              <span
+                                className="ia-mastery-pct"
+                                style={{ color: scoreColor(s.avgMastery) }}
+                              >
+                                {s.avgMastery}%
+                              </span>
+                            </div>
+                            <div className="ia-bar-track">
+                              <div
+                                className="ia-bar-fill"
+                                style={{
+                                  width: `${s.avgMastery}%`,
+                                  background: barColor(s.avgMastery),
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Counters */}
+                          <div className="ia-counters">
+                            <div className="ia-counter">
+                              <div className="ia-counter-value">
+                                {s.uniqueStudents}
+                              </div>
+                              <div className="ia-counter-label">Students</div>
+                            </div>
+                            <div className="ia-counter">
+                              <div className="ia-counter-value ia-counter-value--green">
+                                {s.masteredCount}
+                              </div>
+                              <div className="ia-counter-label">Mastered</div>
+                            </div>
+                            <div className="ia-counter">
+                              <div className="ia-counter-value ia-counter-value--red">
+                                {s.strugglingCount}
+                              </div>
+                              <div className="ia-counter-label">Struggling</div>
+                            </div>
+                            <div className="ia-counter">
+                              <div className="ia-counter-value">
+                                {s.totalAttempts}
+                              </div>
+                              <div className="ia-counter-label">Attempts</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              }
             </div>
           </div>
-        }
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }

@@ -10,10 +10,7 @@ import {
   saveQuizSession,
 } from "@/lib/firestore";
 import { Course, Topic, LearnerProgress } from "@/types";
-import {
-  BookOpen, ChevronLeft, Brain, CheckCircle2,
-  Lock, Zap, Layers,
-} from "lucide-react";
+import { ChevronLeft, Lock, ArrowRight, Layers } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 export default function CourseDetailPage() {
@@ -48,9 +45,7 @@ export default function CourseDetailPage() {
 
   const isUnlocked = (topic: Topic) => {
     if (!topic.prerequisiteIds?.length) return true;
-    return topic.prerequisiteIds.every(
-      (pid) => progressMap[pid]?.mastered === true
-    );
+    return topic.prerequisiteIds.every((pid) => progressMap[pid]?.mastered === true);
   };
 
   const handleStartQuiz = async (topic: Topic) => {
@@ -76,163 +71,333 @@ export default function CourseDetailPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .cd-spin-root { min-height:100vh; background:#faf9f7; display:flex; align-items:center; justify-content:center; }
+          .cd-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:cdspin .7s linear infinite; }
+          @keyframes cdspin { to { transform:rotate(360deg); } }
+        `}</style>
+        <div className="cd-spin-root"><div className="cd-spinner" /></div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      <Sidebar />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;1,300&family=Geist:wght@300;400;500&display=swap');
 
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 min-w-0">
-        <button
-          onClick={() => router.push("/learn")}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-300 text-sm mb-6 transition-colors"
-        >
-          <ChevronLeft size={16} /> Back to courses
-        </button>
+        .cd-root { min-height:100vh; background:#faf9f7; display:flex; font-family:'Geist',sans-serif; color:#1c1917; }
+        .cd-main { flex:1; margin-left:220px; min-width:0; display:flex; flex-direction:column; }
 
-        {fetching ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        /* ── Top bar ── */
+        .cd-topbar {
+          padding: 20px 40px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .cd-back {
+          display: inline-flex; align-items: center; gap: 5px;
+          font-size: 12px; font-weight: 400; color: #a8a29e;
+          background: none; border: none; cursor: pointer;
+          font-family: 'Geist', sans-serif;
+          transition: color .15s;
+          padding: 0;
+        }
+        .cd-back:hover { color: #1c1917; }
+        .cd-back-sep { color: #e7e5e4; font-size: 14px; }
+        .cd-back-course { font-size: 13px; font-weight: 400; color: #78716c; }
+
+        /* ── Course header ── */
+        .cd-header {
+          padding: 32px 40px 28px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: flex-start;
+          gap: 20px;
+        }
+        .cd-header-index {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 40px;
+          color: #e7e5e4;
+          line-height: 1;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .cd-header-body { flex: 1; min-width: 0; }
+        .cd-header-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 26px;
+          color: #1c1917;
+          line-height: 1.2;
+          margin-bottom: 8px;
+        }
+        .cd-header-desc {
+          font-size: 14px; font-weight: 300; color: #78716c;
+          line-height: 1.7; max-width: 560px; margin-bottom: 14px;
+        }
+        .cd-header-meta {
+          display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .cd-meta-item {
+          display: flex; align-items: center; gap: 5px;
+          font-size: 11px; font-weight: 400; color: #a8a29e;
+        }
+        .cd-meta-badge {
+          font-size: 10px; font-weight: 500;
+          letter-spacing: .06em; text-transform: uppercase;
+          color: #a8a29e; background: #f5f4f2;
+          padding: 3px 8px; border-radius: 3px;
+        }
+
+        /* ── Topics section ── */
+        .cd-body { padding: 32px 40px 48px; }
+        .cd-section-label {
+          font-size: 11px; font-weight: 500;
+          letter-spacing: .08em; text-transform: uppercase;
+          color: #a8a29e; margin-bottom: 16px;
+        }
+
+        /* ── Topic table ── */
+        .cd-topics {
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #fff;
+        }
+        .cd-topic-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          border-bottom: 1px solid #e7e5e4;
+          transition: background .15s;
+        }
+        .cd-topic-row:last-child { border-bottom: none; }
+        .cd-topic-row.unlocked:hover { background: #faf9f7; }
+        .cd-topic-row.locked { opacity: .55; }
+
+        .cd-topic-num {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size: 18px;
+          color: #d6d3d1; line-height: 1;
+          width: 28px; flex-shrink: 0; text-align: right;
+        }
+        .cd-topic-info { flex: 1; min-width: 0; }
+        .cd-topic-title {
+          font-size: 13px; font-weight: 500; color: #1c1917;
+          margin-bottom: 4px;
+        }
+
+        /* mastery bar */
+        .cd-mastery-row {
+          display: flex; align-items: center; gap: 8px; margin-top: 6px;
+        }
+        .cd-mastery-bar-wrap {
+          flex: 1; max-width: 160px;
+          height: 3px; background: #f0ede8; border-radius: 2px; overflow: hidden;
+        }
+        .cd-mastery-bar-fill {
+          height: 100%; background: #1c1917;
+          border-radius: 2px; transition: width .4s ease;
+        }
+        .cd-mastery-pct {
+          font-size: 11px; font-weight: 400; color: #a8a29e;
+        }
+
+        /* badges */
+        .cd-badge {
+          font-size: 10px; font-weight: 500;
+          letter-spacing: .05em; text-transform: uppercase;
+          padding: 3px 8px; border-radius: 3px;
+          display: inline-flex; align-items: center; gap: 4px;
+        }
+        .cd-badge-mastered { color: #16a34a; background: #f0fdf4; }
+        .cd-badge-progress { color: #b45309; background: #fffbeb; }
+        .cd-badge-locked   { color: #a8a29e; background: #f5f4f2; }
+
+        /* quiz button */
+        .cd-quiz-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px; font-weight: 500;
+          color: #faf9f7; background: #1c1917;
+          border: none; border-radius: 4px;
+          padding: 8px 16px; cursor: pointer;
+          white-space: nowrap; flex-shrink: 0;
+          transition: background .15s, opacity .15s;
+          letter-spacing: .03em;
+        }
+        .cd-quiz-btn:hover:not(:disabled) { background: #292524; }
+        .cd-quiz-btn:disabled { opacity: .45; cursor: not-allowed; }
+        .cd-quiz-btn-ghost {
+          background: none; color: #a8a29e; border: 1px solid #e7e5e4;
+        }
+        .cd-quiz-btn-ghost:hover:not(:disabled) { background: #f5f4f2; color: #1c1917; }
+
+        /* spinner */
+        .cd-btn-spinner {
+          width: 12px; height: 12px;
+          border: 1.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+          border-radius: 50%; animation: cdspin .7s linear infinite;
+        }
+        @keyframes cdspin { to { transform: rotate(360deg); } }
+
+        /* empty */
+        .cd-empty {
+          padding: 40px 20px;
+          display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+        }
+        .cd-empty-title { font-size: 14px; font-weight: 400; color: #78716c; }
+        .cd-empty-sub { font-size: 13px; font-weight: 300; color: #a8a29e; }
+
+        /* loading */
+        .cd-loading {
+          display: flex; align-items: center; gap: 10px;
+          padding: 40px 0;
+          font-size: 13px; font-weight: 300; color: #a8a29e;
+        }
+        .cd-spinner { width:18px; height:18px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:cdspin .7s linear infinite; }
+
+        @media (max-width: 1024px) {
+          .cd-main { margin-left: 0; }
+          .cd-topbar, .cd-header, .cd-body { padding-left: 20px; padding-right: 20px; }
+        }
+      `}</style>
+
+      <div className="cd-root">
+        <Sidebar />
+
+        <main className="cd-main">
+
+          {/* Breadcrumb top bar */}
+          <div className="cd-topbar">
+            <button className="cd-back" onClick={() => router.push("/learn")}>
+              <ChevronLeft size={13} /> Courses
+            </button>
+            {course && (
+              <>
+                <span className="cd-back-sep">/</span>
+                <span className="cd-back-course">{course.title}</span>
+              </>
+            )}
           </div>
-        ) : (
-          <>
-            {/* Course header */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 mb-6 sm:mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-                  <Brain size={22} className="text-purple-400" />
+
+          {fetching ? (
+            <div style={{ padding: "40px" }}>
+              <div className="cd-loading">
+                <div className="cd-spinner" />
+                Loading course…
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Course header */}
+              <div className="cd-header">
+                <div className="cd-header-index">
+                  {String(topics.length).padStart(2, "0")}
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold text-white mb-1">
-                    {course?.title}
-                  </h1>
-                  <p className="text-slate-400 text-sm leading-relaxed">
-                    {course?.description}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                <div className="cd-header-body">
+                  <h1 className="cd-header-title">{course?.title}</h1>
+                  <p className="cd-header-desc">{course?.description}</p>
+                  <div className="cd-header-meta">
+                    <span className="cd-meta-item">
                       <Layers size={11} /> {topics.length} topics
                     </span>
-                    <span className="text-slate-700">·</span>
-                    <span className="text-xs text-slate-500">Adaptive difficulty</span>
-                    <span className="text-slate-700">·</span>
-                    <span className="text-xs bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
-                      Free
-                    </span>
+                    <span className="cd-meta-item">Adaptive difficulty</span>
+                    <span className="cd-meta-badge">Free</span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Topics */}
-            <h2 className="text-white font-semibold mb-4">Course topics</h2>
+              {/* Topics */}
+              <div className="cd-body">
+                <div className="cd-section-label">Course topics</div>
 
-            {topics.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
-                  <BookOpen size={24} className="text-purple-400" />
-                </div>
-                <p className="text-white font-semibold">No topics yet</p>
-                <p className="text-slate-500 text-sm mt-1">
-                  The instructor hasn&apos;t added topics yet.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {topics.map((topic, idx) => {
-                  const unlocked = isUnlocked(topic);
-                  const progress = progressMap[topic.id];
-                  const mastery = progress?.masteryScore ?? null;
-                  const mastered = progress?.mastered ?? false;
-                  const isStarting = startingQuiz === topic.id;
+                {topics.length === 0 ? (
+                  <div className="cd-topics">
+                    <div className="cd-empty">
+                      <p className="cd-empty-title">No topics yet</p>
+                      <p className="cd-empty-sub">The instructor hasn&apos;t added any topics yet.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="cd-topics">
+                    {topics.map((topic, idx) => {
+                      const unlocked = isUnlocked(topic);
+                      const progress = progressMap[topic.id];
+                      const mastery = progress?.masteryScore ?? null;
+                      const mastered = progress?.mastered ?? false;
+                      const isStarting = startingQuiz === topic.id;
 
-                  return (
-                    <div
-                      key={topic.id}
-                      className={`bg-white/5 border rounded-2xl p-4 sm:p-5 transition-all ${
-                        unlocked
-                          ? "border-white/10 hover:border-purple-500/20"
-                          : "border-white/5 opacity-60"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        {/* Index / status icon */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
-                          mastered
-                            ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
-                            : unlocked
-                            ? "bg-purple-500/10 border border-purple-500/20 text-purple-400"
-                            : "bg-white/5 border border-white/10 text-slate-600"
-                        }`}>
-                          {mastered ? <CheckCircle2 size={16} /> : !unlocked ? <Lock size={14} /> : idx + 1}
-                        </div>
+                      return (
+                        <div
+                          key={topic.id}
+                          className={`cd-topic-row ${unlocked ? "unlocked" : "locked"}`}
+                        >
+                          {/* Number */}
+                          <div className="cd-topic-num">
+                            {String(idx + 1).padStart(2, "0")}
+                          </div>
 
-                        {/* Title + mastery bar */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-white text-sm font-medium">{topic.title}</span>
-                            {mastered && (
-                              <span className="text-xs border px-2 py-0.5 rounded-full bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-                                Mastered
-                              </span>
-                            )}
-                            {!mastered && mastery !== null && (
-                              <span className="text-xs border px-2 py-0.5 rounded-full bg-yellow-500/10 border-yellow-500/20 text-yellow-400">
-                                {mastery}% mastery
-                              </span>
-                            )}
-                            {!unlocked && (
-                              <span className="text-xs border px-2 py-0.5 rounded-full bg-slate-500/10 border-slate-500/20 text-slate-500">
-                                Complete previous topic first
-                              </span>
+                          {/* Info */}
+                          <div className="cd-topic-info">
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span className="cd-topic-title">{topic.title}</span>
+                              {mastered && (
+                                <span className="cd-badge cd-badge-mastered">Mastered</span>
+                              )}
+                              {!mastered && mastery !== null && (
+                                <span className="cd-badge cd-badge-progress">{mastery}% mastery</span>
+                              )}
+                              {!unlocked && (
+                                <span className="cd-badge cd-badge-locked">
+                                  <Lock size={9} /> Locked
+                                </span>
+                              )}
+                            </div>
+                            {mastery !== null && (
+                              <div className="cd-mastery-row">
+                                <div className="cd-mastery-bar-wrap">
+                                  <div
+                                    className="cd-mastery-bar-fill"
+                                    style={{ width: `${mastery}%` }}
+                                  />
+                                </div>
+                                <span className="cd-mastery-pct">{mastery}%</span>
+                              </div>
                             )}
                           </div>
-                          {mastery !== null && (
-                            <div className="mt-2 flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-purple-500 rounded-full transition-all"
-                                  style={{ width: `${mastery}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-slate-600">{mastery}%</span>
-                            </div>
+
+                          {/* Action */}
+                          {unlocked && (
+                            <button
+                              onClick={() => handleStartQuiz(topic)}
+                              disabled={isStarting}
+                              className={`cd-quiz-btn ${mastery !== null ? "cd-quiz-btn-ghost" : ""}`}
+                            >
+                              {isStarting ? (
+                                <div className="cd-btn-spinner" />
+                              ) : (
+                                <ArrowRight size={12} />
+                              )}
+                              {mastery !== null ? "Retake quiz" : "Start quiz"}
+                            </button>
                           )}
                         </div>
-
-                        {/* Quiz button */}
-                        {unlocked && (
-                          <button
-                            onClick={() => handleStartQuiz(topic)}
-                            disabled={isStarting}
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold transition-colors shrink-0"
-                          >
-                            {isStarting ? (
-                              <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                              <Zap size={13} />
-                            )}
-                            <span className="hidden sm:inline">
-                              {mastery !== null ? "Retake quiz" : "Start quiz"}
-                            </span>
-                            <span className="sm:hidden">
-                              {mastery !== null ? "Retake" : "Start"}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+            </>
+          )}
+        </main>
+      </div>
+    </>
   );
 }

@@ -4,17 +4,23 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import {
-  getUserProgress, getUserSessions, getCourses,
+  getUserProgress,
+  getUserSessions,
+  getCourses,
   getUserProfile,
 } from "@/lib/firestore";
 import {
-  BookOpen, Brain, Flame, Star, TrendingUp, Clock,
-  ChevronRight, CheckCircle2, XCircle,
+  BookOpen,
+  Brain,
+  Flame,
+  Star,
+  TrendingUp,
+  ChevronRight,
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { Course, Topic } from "@/types";
 
-// ─── Local types ────────────────────────────────────────────────────────────
+// ─── Local types ─────────────────────────────────────────────────────────────
 
 type UserSession = {
   id: string;
@@ -29,7 +35,7 @@ type ProgressEntry = {
   topicId: string;
 };
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user, loading, updateUser } = useAuthStore();
@@ -44,11 +50,10 @@ export default function DashboardPage() {
     if (!loading && !user) router.replace("/login");
   }, [user, loading, router]);
 
-  // Stable reference so we can safely include it in deps
   const stableUpdateUser = useCallback(
     (data: Parameters<typeof updateUser>[0]) => updateUser(data),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [],
   );
 
   useEffect(() => {
@@ -58,216 +63,504 @@ export default function DashboardPage() {
       getUserSessions(user.uid),
       getCourses(),
       getUserProfile(user.uid),
-    ]).then(([progress, userSessions, allCourses, freshProfile]) => {
-      if (freshProfile) {
-        stableUpdateUser({ xp: freshProfile.xp ?? 0, streak: freshProfile.streak ?? 0 });
-      }
-      const typed = progress as ProgressEntry[];
-      const activeCourseIds = new Set(
-        typed.map((p) => p.courseId).filter(Boolean)
-      );
-      setCoursesCount(activeCourseIds.size || allCourses.length);
-      setMasteredCount(typed.filter((p) => p.mastered).length);
-      setSessions(userSessions as UserSession[]);
-    }).finally(() => setFetching(false));
+    ])
+      .then(([progress, userSessions, allCourses, freshProfile]) => {
+        if (freshProfile) {
+          stableUpdateUser({
+            xp: freshProfile.xp ?? 0,
+            streak: freshProfile.streak ?? 0,
+          });
+        }
+        const typed = progress as ProgressEntry[];
+        const activeCourseIds = new Set(
+          typed.map((p) => p.courseId).filter(Boolean),
+        );
+        setCoursesCount(activeCourseIds.size || allCourses.length);
+        setMasteredCount(typed.filter((p) => p.mastered).length);
+        setSessions(userSessions as UserSession[]);
+      })
+      .finally(() => setFetching(false));
   }, [user?.uid, stableUpdateUser]);
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&display=swap');
+          .dash-spinner-root {
+            min-height: 100vh; background: #faf9f7;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Geist', sans-serif;
+          }
+          .dash-spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #e7e5e4; border-top-color: #1c1917;
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+        <div className="dash-spinner-root">
+          <div className="dash-spinner" />
+        </div>
+      </>
     );
   }
 
   const stats = [
-    { label: "XP earned",       value: user.xp ?? 0,                      icon: Star,     color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20"  },
-    { label: "Day streak",      value: user.streak ?? 0,                   icon: Flame,    color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
-    { label: "Courses",         value: fetching ? "—" : coursesCount,      icon: BookOpen, color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20"    },
-    { label: "Mastered topics", value: fetching ? "—" : masteredCount,     icon: Brain,    color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
+    { label: "XP earned", value: user.xp ?? 0, icon: Star, suffix: "xp" },
+    {
+      label: "Day streak",
+      value: user.streak ?? 0,
+      icon: Flame,
+      suffix: "days",
+    },
+    {
+      label: "Courses",
+      value: fetching ? "—" : coursesCount,
+      icon: BookOpen,
+      suffix: "",
+    },
+    {
+      label: "Mastered topics",
+      value: fetching ? "—" : masteredCount,
+      icon: Brain,
+      suffix: "",
+    },
   ];
 
   const formatDate = (
-    val: { toDate?: () => Date } | Date | string | number | null | undefined
+    val: { toDate?: () => Date } | Date | string | number | null | undefined,
   ) => {
     if (!val) return "—";
     const d =
-      val instanceof Date
-        ? val
-        : typeof val === "object" && "toDate" in val && typeof val.toDate === "function"
-          ? val.toDate()
-          : new Date(val as string | number);
+      val instanceof Date ? val
+      : (
+        typeof val === "object" &&
+        "toDate" in val &&
+        typeof val.toDate === "function"
+      ) ?
+        val.toDate()
+      : new Date(val as string | number);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      <Sidebar />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;1,300&family=Geist:wght@300;400;500&display=swap');
 
-      {/* ── Main content ── */}
-      {/* ml-60 on large screens; no margin on mobile (sidebar overlays or is hidden) */}
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 w-full min-w-0">
+        .dash-root {
+          min-height: 100vh;
+          background: #faf9f7;
+          display: flex;
+          font-family: 'Geist', sans-serif;
+          color: #1c1917;
+        }
 
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Good day, {user.displayName?.split(" ")[0]} 👋
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Ready to continue learning? Here&apos;s your overview.
-          </p>
-        </div>
+        /* ── Main ── */
+        .dash-main {
+          flex: 1;
+          margin-left: 240px;
+          padding: 0;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
 
-        {/* Stats grid — 2 cols on mobile, 4 on lg */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {stats.map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className={`rounded-2xl border p-4 sm:p-5 ${bg} flex flex-col gap-2 sm:gap-3`}>
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 flex items-center justify-center">
-                <Icon size={16} className={color} />
-              </div>
-              <div>
-                <p className="text-xl sm:text-2xl font-bold text-white">{value}</p>
-                <p className="text-slate-500 text-xs mt-0.5">{label}</p>
-              </div>
+        /* ── Top bar ── */
+        .dash-topbar {
+          padding: 28px 40px 24px;
+          border-bottom: 1px solid #e7e5e4;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+        }
+        .dash-greeting {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 26px;
+          color: #1c1917;
+          line-height: 1.2;
+        }
+        .dash-greeting em { font-style: italic; color: #78716c; }
+        .dash-sub {
+          font-size: 13px;
+          font-weight: 300;
+          color: #a8a29e;
+          margin-top: 4px;
+        }
+
+        /* ── Stats row ── */
+        .dash-stats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .dash-stat {
+          padding: 24px 32px;
+          border-right: 1px solid #e7e5e4;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .dash-stat:last-child { border-right: none; }
+        .dash-stat-icon {
+          width: 32px; height: 32px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          display: flex; align-items: center; justify-content: center;
+          background: #fff;
+          color: #78716c;
+        }
+        .dash-stat-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 28px;
+          color: #1c1917;
+          line-height: 1;
+        }
+        .dash-stat-label {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #a8a29e;
+          margin-top: 2px;
+        }
+
+        /* ── Content grid ── */
+        .dash-content {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          flex: 1;
+        }
+        .dash-card {
+          padding: 28px 32px;
+          border-right: 1px solid #e7e5e4;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .dash-card:nth-child(2) { border-right: none; }
+        .dash-card-full {
+          grid-column: 1 / -1;
+          padding: 28px 32px;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .dash-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        .dash-card-title {
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #78716c;
+        }
+        .dash-card-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #a8a29e;
+          text-decoration: none;
+          border-bottom: 1px solid #e7e5e4;
+          padding-bottom: 1px;
+          background: none;
+          border-left: none; border-top: none; border-right: none;
+          cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
+          font-family: 'Geist', sans-serif;
+        }
+        .dash-card-link:hover { color: #1c1917; border-color: #1c1917; }
+
+        /* ── Empty state ── */
+        .dash-empty {
+          display: flex; flex-direction: column;
+          align-items: flex-start; justify-content: center;
+          padding: 12px 0 4px;
+          gap: 6px;
+        }
+        .dash-empty-title {
+          font-size: 14px; font-weight: 400; color: #78716c;
+        }
+        .dash-empty-sub {
+          font-size: 13px; font-weight: 300; color: #a8a29e;
+        }
+        .dash-empty-btn {
+          margin-top: 12px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px; font-weight: 500;
+          color: #faf9f7; background: #1c1917;
+          border: none; border-radius: 4px;
+          padding: 8px 18px;
+          cursor: pointer;
+          transition: background 0.15s;
+          letter-spacing: 0.03em;
+        }
+        .dash-empty-btn:hover { background: #292524; }
+
+        /* ── Row items ── */
+        .dash-row-item {
+          display: flex; align-items: center; gap: 12px;
+          padding: 10px 12px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          margin-bottom: 8px;
+          background: #fff;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          font-family: 'Geist', sans-serif;
+          width: 100%; text-align: left;
+        }
+        .dash-row-item:last-child { margin-bottom: 0; }
+        .dash-row-item:hover { border-color: #d6d3d1; }
+        .dash-row-icon {
+          width: 32px; height: 32px;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          display: flex; align-items: center; justify-content: center;
+          background: #faf9f7; color: #78716c; flex-shrink: 0;
+        }
+        .dash-row-label { font-size: 13px; font-weight: 400; color: #1c1917; flex: 1; }
+        .dash-row-chevron { color: #c4bfba; }
+
+        /* ── Session items ── */
+        .dash-session {
+          display: flex; align-items: center; gap: 10px;
+          padding: 9px 12px;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .dash-session:last-child { border-bottom: none; }
+        .dash-session-dot {
+          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .dash-session-label { font-size: 13px; font-weight: 400; color: #1c1917; flex: 1; }
+        .dash-session-date { font-size: 11px; color: #a8a29e; }
+        .dash-session-score { font-size: 13px; font-weight: 500; }
+        .dash-session-pass .dash-session-dot { background: #16a34a; }
+        .dash-session-pass .dash-session-score { color: #16a34a; }
+        .dash-session-fail .dash-session-dot { background: #dc2626; }
+        .dash-session-fail .dash-session-score { color: #dc2626; }
+
+        /* ── AI card ── */
+        .dash-ai-badge {
+          display: flex; align-items: center; gap: 5px;
+          font-size: 11px; font-weight: 500;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          color: #a8a29e;
+        }
+        .dash-ai-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+        .dash-ai-rec {
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          padding: 16px;
+          background: #fff;
+        }
+        .dash-ai-num {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 22px;
+          color: #d6d3d1;
+          margin-bottom: 10px;
+          line-height: 1;
+        }
+        .dash-ai-text {
+          font-size: 13px; font-weight: 300;
+          color: #78716c; line-height: 1.65;
+        }
+        .dash-ai-loading {
+          display: flex; align-items: center; gap: 10px;
+          padding: 24px 0;
+          font-size: 13px; font-weight: 300; color: #a8a29e;
+        }
+        .dash-ai-spinner {
+          width: 16px; height: 16px;
+          border: 1.5px solid #e7e5e4; border-top-color: #78716c;
+          border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .dash-ai-set-btn {
+          margin-top: 12px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px; font-weight: 500;
+          color: #faf9f7; background: #1c1917;
+          border: none; border-radius: 4px;
+          padding: 8px 18px; cursor: pointer;
+          transition: background 0.15s; letter-spacing: 0.03em;
+        }
+        .dash-ai-set-btn:hover { background: #292524; }
+
+        @media (max-width: 1024px) {
+          .dash-main { margin-left: 0; }
+          .dash-topbar { padding: 20px 20px 16px; }
+          .dash-stats { grid-template-columns: repeat(2, 1fr); }
+          .dash-stat:nth-child(2) { border-right: none; }
+          .dash-stat:nth-child(3) { border-top: 1px solid #e7e5e4; }
+          .dash-content { grid-template-columns: 1fr; }
+          .dash-card { border-right: none; }
+          .dash-ai-grid { grid-template-columns: 1fr; }
+          .dash-card, .dash-card-full { padding: 20px; }
+        }
+      `}</style>
+
+      <div className="dash-root">
+        <Sidebar />
+        <main className="dash-main">
+          {/* Top bar */}
+          <div className="dash-topbar">
+            <div>
+              <h1 className="dash-greeting">
+                Good day, <em>{user.displayName?.split(" ")[0]}</em>
+              </h1>
+              <p className="dash-sub">Here&apos;s your learning overview.</p>
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* Cards grid — 1 col on mobile, 2 on lg */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-
-          {/* Continue learning */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white font-semibold text-sm sm:text-base">Continue learning</h2>
-              <button
-                onClick={() => router.push("/learn")}
-                className="text-purple-400 text-xs hover:text-purple-300 flex items-center gap-1"
-              >
-                Browse all <ChevronRight size={12} />
-              </button>
-            </div>
-
-            {masteredCount === 0 && !fetching ? (
-              <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-                  <BookOpen size={20} className="text-purple-400" />
+          {/* Stats */}
+          <div className="dash-stats">
+            {stats.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="dash-stat">
+                <div className="dash-stat-icon">
+                  <Icon size={15} />
                 </div>
-                <p className="text-slate-400 text-sm font-medium">No courses yet</p>
-                <p className="text-slate-600 text-xs mt-1">Enrol in a course to get started</p>
+                <div>
+                  <div className="dash-stat-value">{value}</div>
+                  <div className="dash-stat-label">{label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cards */}
+          <div className="dash-content">
+            {/* Continue learning */}
+            <div className="dash-card">
+              <div className="dash-card-header">
+                <span className="dash-card-title">Continue learning</span>
                 <button
+                  className="dash-card-link"
                   onClick={() => router.push("/learn")}
-                  className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-xl transition-colors"
                 >
-                  Browse courses
+                  Browse all <ChevronRight size={11} />
                 </button>
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <p className="text-slate-500 text-xs mb-2">Pick up where you left off</p>
-                <button
-                  onClick={() => router.push("/learn")}
-                  className="flex items-center justify-between px-3 sm:px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-                      <Brain size={14} className="text-purple-400" />
+
+              {masteredCount === 0 && !fetching ?
+                <div className="dash-empty">
+                  <p className="dash-empty-title">No courses yet</p>
+                  <p className="dash-empty-sub">
+                    Enrol in a course to get started
+                  </p>
+                  <button
+                    className="dash-empty-btn"
+                    onClick={() => router.push("/learn")}
+                  >
+                    Browse courses
+                  </button>
+                </div>
+              : <>
+                  <button
+                    className="dash-row-item"
+                    onClick={() => router.push("/learn")}
+                  >
+                    <div className="dash-row-icon">
+                      <Brain size={14} />
                     </div>
-                    <span className="text-white text-sm font-medium">Continue learning</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
-                </button>
+                    <span className="dash-row-label">Continue learning</span>
+                    <ChevronRight size={13} className="dash-row-chevron" />
+                  </button>
+                  <button
+                    className="dash-row-item"
+                    onClick={() => router.push("/progress")}
+                  >
+                    <div className="dash-row-icon">
+                      <TrendingUp size={14} />
+                    </div>
+                    <span className="dash-row-label">View full progress</span>
+                    <ChevronRight size={13} className="dash-row-chevron" />
+                  </button>
+                </>
+              }
+            </div>
+
+            {/* Recent activity */}
+            <div className="dash-card">
+              <div className="dash-card-header">
+                <span className="dash-card-title">Recent activity</span>
                 <button
+                  className="dash-card-link"
                   onClick={() => router.push("/progress")}
-                  className="flex items-center justify-between px-3 sm:px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
-                      <TrendingUp size={14} className="text-teal-400" />
-                    </div>
-                    <span className="text-white text-sm font-medium">View full progress</span>
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+                  View all <ChevronRight size={11} />
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* Recent activity */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white font-semibold text-sm sm:text-base">Recent activity</h2>
-              <button
-                onClick={() => router.push("/progress")}
-                className="text-purple-400 text-xs hover:text-purple-300 flex items-center gap-1"
-              >
-                View all <ChevronRight size={12} />
-              </button>
-            </div>
-
-            {sessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mb-3">
-                  <Clock size={20} className="text-teal-400" />
+              {sessions.length === 0 ?
+                <div className="dash-empty">
+                  <p className="dash-empty-title">No activity yet</p>
+                  <p className="dash-empty-sub">
+                    Your learning sessions will appear here
+                  </p>
                 </div>
-                <p className="text-slate-400 text-sm font-medium">No activity yet</p>
-                <p className="text-slate-600 text-xs mt-1">Your learning sessions will appear here</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {sessions.slice(0, 5).map((s) => {
-                  const passed = (s.score ?? 0) >= 70;
-                  return (
-                    <div
-                      key={s.id}
-                      className="flex items-center gap-3 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5"
-                    >
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                        passed
-                          ? "bg-emerald-500/10 border border-emerald-500/20"
-                          : "bg-red-500/10 border border-red-500/20"
-                      }`}>
-                        {passed
-                          ? <CheckCircle2 size={13} className="text-emerald-400" />
-                          : <XCircle size={13} className="text-red-400" />
-                        }
+              : <div
+                  style={{
+                    border: "1px solid #e7e5e4",
+                    borderRadius: 6,
+                    overflow: "hidden",
+                    background: "#fff",
+                  }}
+                >
+                  {sessions.slice(0, 5).map((s) => {
+                    const passed = (s.score ?? 0) >= 70;
+                    return (
+                      <div
+                        key={s.id}
+                        className={`dash-session ${passed ? "dash-session-pass" : "dash-session-fail"}`}
+                      >
+                        <div className="dash-session-dot" />
+                        <span className="dash-session-label">
+                          Quiz completed
+                        </span>
+                        <span className="dash-session-date">
+                          {formatDate(s.startedAt)}
+                        </span>
+                        <span className="dash-session-score">
+                          {s.score ?? 0}%
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-medium truncate">Quiz completed</p>
-                        <p className="text-slate-600 text-xs">{formatDate(s.startedAt)}</p>
-                      </div>
-                      <span className={`text-xs font-bold shrink-0 ${passed ? "text-emerald-400" : "text-red-400"}`}>
-                        {s.score ?? 0}%
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* AI Recommendations — full width */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-white font-semibold text-sm sm:text-base">AI recommendations</h2>
-                <p className="text-slate-500 text-xs mt-0.5">Personalised for your learning style</p>
-              </div>
-              <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full px-2.5 sm:px-3 py-1">
-                <Brain size={11} className="text-purple-400" />
-                <span className="text-purple-300 text-xs hidden sm:inline">AI powered</span>
-              </div>
+                    );
+                  })}
+                </div>
+              }
             </div>
-            <AIRecommendations uid={user.uid} learningStyle={user.learningStyle} />
-          </div>
 
-        </div>
-      </main>
-    </div>
+            {/* AI Recommendations — full width */}
+            <div className="dash-card-full">
+              <div className="dash-card-header">
+                <span className="dash-card-title">AI recommendations</span>
+                <div className="dash-ai-badge">
+                  <Brain size={12} /> Personalised
+                </div>
+              </div>
+              <AIRecommendations
+                uid={user.uid}
+                learningStyle={user.learningStyle}
+              />
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
 
-// ─── AI Recommendations ──────────────────────────────────────────────────────
+// ─── AI Recommendations ───────────────────────────────────────────────────────
 
 function AIRecommendations({
   uid,
@@ -290,7 +583,8 @@ function AIRecommendations({
       setLoading(true);
       setError(false);
       try {
-        const { getUserProgress, getCourses, getCourseTopics } = await import("@/lib/firestore");
+        const { getUserProgress, getCourses, getCourseTopics } =
+          await import("@/lib/firestore");
         const [rawProgress, courses] = await Promise.all([
           getUserProgress(uid),
           getCourses(),
@@ -300,8 +594,10 @@ function AIRecommendations({
         await Promise.all(
           courses.map(async (c: Course) => {
             const topics = await getCourseTopics(c.id);
-            topics.forEach((t: Topic) => { topicMap[t.id] = t.title; });
-          })
+            topics.forEach((t: Topic) => {
+              topicMap[t.id] = t.title;
+            });
+          }),
         );
 
         const typed = rawProgress as ProgressEntry[];
@@ -311,8 +607,9 @@ function AIRecommendations({
           .slice(0, 5)
           .map((p) => topicMap[p.topicId] ?? p.topicId);
 
-        const prompt = weakTopics.length > 0
-          ? `You are a learning coach. A student with a ${learningStyle} learning style is struggling with: ${weakTopics.join(", ")}. Give exactly 3 short, specific, actionable recommendations tailored to their learning style. Each must be one sentence. Return only a JSON array of 3 strings, no other text, no markdown.`
+        const prompt =
+          weakTopics.length > 0 ?
+            `You are a learning coach. A student with a ${learningStyle} learning style is struggling with: ${weakTopics.join(", ")}. Give exactly 3 short, specific, actionable recommendations tailored to their learning style. Each must be one sentence. Return only a JSON array of 3 strings, no other text, no markdown.`
           : `You are a learning coach. A student with a ${learningStyle} learning style has been doing well. Give exactly 3 short motivational next-step suggestions. Return only a JSON array of 3 strings, no other text, no markdown.`;
 
         const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -345,15 +642,14 @@ function AIRecommendations({
 
   if (!learningStyle) {
     return (
-      <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center mb-3">
-          <Brain size={20} className="text-pink-400" />
-        </div>
-        <p className="text-slate-400 text-sm font-medium">No recommendations yet</p>
-        <p className="text-slate-600 text-xs mt-1">Set your learning style to get personalised suggestions</p>
+      <div className="dash-empty">
+        <p className="dash-empty-title">No recommendations yet</p>
+        <p className="dash-empty-sub">
+          Set your learning style to get personalised suggestions
+        </p>
         <button
+          className="dash-ai-set-btn"
           onClick={() => router.push("/profile")}
-          className="mt-4 px-4 py-2 bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/20 text-pink-300 text-xs font-medium rounded-xl transition-colors"
         >
           Set learning style
         </button>
@@ -363,20 +659,23 @@ function AIRecommendations({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 sm:py-10 gap-3">
-        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-slate-500 text-sm">Generating recommendations…</span>
+      <div className="dash-ai-loading">
+        <div className="dash-ai-spinner" />
+        Generating recommendations…
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
-        <p className="text-slate-400 text-sm">Could not load recommendations.</p>
+      <div className="dash-empty">
+        <p className="dash-empty-title">Could not load recommendations</p>
         <button
-          onClick={() => { fetched.current = false; setError(false); }}
-          className="mt-3 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-medium rounded-xl transition-colors"
+          className="dash-empty-btn"
+          onClick={() => {
+            fetched.current = false;
+            setError(false);
+          }}
         >
           Try again
         </button>
@@ -385,17 +684,11 @@ function AIRecommendations({
   }
 
   return (
-    /* 1 col on mobile, 3 on md+ */
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+    <div className="dash-ai-grid">
       {recs.map((rec, i) => (
-        <div
-          key={i}
-          className="bg-white/5 border border-purple-500/10 rounded-xl p-3 sm:p-4 flex flex-col gap-2"
-        >
-          <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
-            <span className="text-purple-400 text-xs font-bold">{i + 1}</span>
-          </div>
-          <p className="text-slate-300 text-sm leading-relaxed">{rec}</p>
+        <div key={i} className="dash-ai-rec">
+          <div className="dash-ai-num">0{i + 1}</div>
+          <p className="dash-ai-text">{rec}</p>
         </div>
       ))}
     </div>

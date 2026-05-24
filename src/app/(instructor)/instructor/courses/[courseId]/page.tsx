@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   Layers,
   X,
-  Loader2,
 } from "lucide-react";
 
 const difficultyLabel: Record<number, string> = {
@@ -25,14 +24,6 @@ const difficultyLabel: Record<number, string> = {
   3: "Intermediate",
   4: "Hard",
   5: "Advanced",
-};
-
-const difficultyColor: Record<number, string> = {
-  1: "text-green-400 bg-green-500/10 border-green-500/20",
-  2: "text-teal-400 bg-teal-500/10 border-teal-500/20",
-  3: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  4: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  5: "text-red-400 bg-red-500/10 border-red-500/20",
 };
 
 export default function CourseDetailPage() {
@@ -136,170 +127,588 @@ export default function CourseDetailPage() {
 
   if (loading || !user || fetching) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .cd-spin { min-height:100vh; background:#faf9f7; display:flex; align-items:center; justify-content:center; }
+          .cd-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:cdspin .7s linear infinite; }
+          @keyframes cdspin { to { transform:rotate(360deg); } }
+        `}</style>
+        <div className="cd-spin">
+          <div className="cd-spinner" />
+        </div>
+      </>
     );
   }
 
+  const avgDifficulty =
+    topics.length ?
+      (
+        topics.reduce((a, t) => a + t.difficultyLevel, 0) / topics.length
+      ).toFixed(1)
+    : "—";
+  const contentTypes =
+    [...new Set(topics.map((t) => t.contentType))].length || "—";
+
   return (
-    <div className="min-h-screen bg-[#0a0a0f] px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-4xl mx-auto">
-      {/* Back */}
-      <button
-        onClick={() => router.push("/instructor/courses")}
-        className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm mb-6 sm:mb-8"
-      >
-        <ArrowLeft size={15} />
-        Back to courses
-      </button>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=Geist:wght@300;400;500&display=swap');
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center shrink-0">
-              <GraduationCap size={14} className="text-white" />
-            </div>
-            <span className="text-slate-500 text-sm">Course editor</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            {course?.title}
-          </h1>
-          <p className="text-slate-500 text-sm mt-1 max-w-xl">
-            {course?.description}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-colors shrink-0 w-full sm:w-auto justify-center sm:justify-start"
-        >
-          <Plus size={15} />
-          Add topic
-        </button>
-      </div>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        {[
-          { label: "Total topics", value: topics.length, icon: Layers },
-          {
-            label: "Avg difficulty",
-            value:
-              topics.length ?
-                (
-                  topics.reduce((a, t) => a + t.difficultyLevel, 0) /
-                  topics.length
-                ).toFixed(1)
-              : "—",
-            icon: GraduationCap,
-          },
-          {
-            label: "Content types",
-            value: [...new Set(topics.map((t) => t.contentType))].length || "—",
-            icon: Layers,
-          },
-        ].map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3"
+        .cd-root {
+          min-height: 100vh;
+          background: #faf9f7;
+          font-family: 'Geist', sans-serif;
+          color: #1c1917;
+        }
+
+        .cd-inner {
+          max-width: 760px;
+          margin: 0 auto;
+          padding: 40px 32px 80px;
+        }
+
+        /* ── Back ── */
+        .cd-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 400;
+          color: #a8a29e;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-family: 'Geist', sans-serif;
+          padding: 0;
+          margin-bottom: 28px;
+          transition: color .12s;
+        }
+        .cd-back:hover { color: #1c1917; }
+
+        /* ── Header ── */
+        .cd-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 28px;
+        }
+        .cd-header-left { flex: 1; min-width: 0; }
+        .cd-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          margin-bottom: 10px;
+        }
+        .cd-breadcrumb-icon {
+          width: 24px; height: 24px;
+          border: 1px solid #e7e5e4;
+          border-radius: 4px;
+          background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #78716c;
+        }
+        .cd-breadcrumb-label {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          color: #a8a29e;
+        }
+        .cd-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 26px;
+          color: #1c1917;
+          line-height: 1.25;
+          margin-bottom: 6px;
+        }
+        .cd-desc {
+          font-size: 13px;
+          font-weight: 300;
+          color: #a8a29e;
+          line-height: 1.6;
+        }
+        .cd-add-topic-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px;
+          font-weight: 500;
+          color: #faf9f7;
+          background: #1c1917;
+          border: none;
+          border-radius: 4px;
+          padding: 9px 18px;
+          cursor: pointer;
+          transition: background .15s;
+          letter-spacing: .03em;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .cd-add-topic-btn:hover { background: #292524; }
+
+        /* ── Stats ── */
+        .cd-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          overflow: hidden;
+          margin-bottom: 28px;
+        }
+        .cd-stat {
+          padding: 18px 20px;
+          border-right: 1px solid #e7e5e4;
+        }
+        .cd-stat:last-child { border-right: none; }
+        .cd-stat-icon  { color:#a8a29e; margin-bottom:8px; }
+        .cd-stat-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 24px;
+          color: #1c1917;
+          line-height: 1;
+        }
+        .cd-stat-label {
+          font-size: 10px;
+          font-weight: 400;
+          letter-spacing: .05em;
+          text-transform: uppercase;
+          color: #a8a29e;
+          margin-top: 4px;
+        }
+
+        /* ── Topics ── */
+        .cd-topics-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .cd-topics-title {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+          color: #a8a29e;
+        }
+        .cd-topics-count {
+          font-size: 11px;
+          font-weight: 300;
+          color: #c4bfba;
+        }
+
+        .cd-topic-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .cd-topic-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 16px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #fff;
+        }
+
+        .cd-topic-index {
+          width: 28px; height: 28px;
+          border: 1px solid #e7e5e4;
+          border-radius: 4px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px;
+          font-weight: 500;
+          color: #a8a29e;
+          flex-shrink: 0;
+        }
+
+        .cd-topic-info { flex: 1; min-width: 0; }
+        .cd-topic-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: #1c1917;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 3px;
+        }
+        .cd-topic-meta {
+          font-size: 11px;
+          font-weight: 300;
+          color: #a8a29e;
+        }
+
+        .cd-diff-badge {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: .05em;
+          text-transform: uppercase;
+          padding: 2px 8px;
+          border-radius: 3px;
+          background: #f5f4f2;
+          color: #78716c;
+          flex-shrink: 0;
+        }
+
+        .cd-add-q-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 11px;
+          font-weight: 500;
+          color: #57534e;
+          background: #f5f4f2;
+          border: 1px solid #e7e5e4;
+          border-radius: 4px;
+          padding: 6px 10px;
+          cursor: pointer;
+          transition: background .12s, border-color .12s, color .12s;
+          white-space: nowrap;
+          flex-shrink: 0;
+          letter-spacing: .03em;
+        }
+        .cd-add-q-btn:hover { background: #edeae6; border-color: #d6d3d1; color: #1c1917; }
+
+        /* ── Empty ── */
+        .cd-empty {
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          background: #fff;
+          padding: 48px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 8px;
+        }
+        .cd-empty-icon {
+          width: 40px; height: 40px;
+          border: 1px solid #e7e5e4;
+          border-radius: 7px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          margin-bottom: 4px;
+        }
+        .cd-empty-title { font-size:13px; font-weight:500; color:#1c1917; }
+        .cd-empty-desc  { font-size:12px; font-weight:300; color:#a8a29e; }
+
+        /* ── Modal overlay ── */
+        .cd-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(28,25,23,.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+          padding: 20px;
+          overflow-y: auto;
+        }
+
+        .cd-modal {
+          background: #fff;
+          border: 1px solid #e7e5e4;
+          border-radius: 8px;
+          padding: 28px;
+          width: 100%;
+          max-width: 460px;
+          margin: auto;
+        }
+        .cd-modal-lg { max-width: 520px; }
+
+        .cd-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+        }
+        .cd-modal-title {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 20px;
+          color: #1c1917;
+        }
+        .cd-modal-close {
+          width: 28px; height: 28px;
+          border: 1px solid #e7e5e4;
+          border-radius: 4px;
+          background: #f5f4f2;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          cursor: pointer;
+          transition: background .12s, color .12s;
+        }
+        .cd-modal-close:hover { background: #edeae6; color: #1c1917; }
+
+        /* Form elements */
+        .cd-form { display: flex; flex-direction: column; gap: 18px; }
+        .cd-field { display: flex; flex-direction: column; gap: 6px; }
+        .cd-label {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          color: #78716c;
+        }
+        .cd-input, .cd-select, .cd-textarea {
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #1c1917;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          padding: 10px 12px;
+          transition: border-color .15s;
+          width: 100%;
+        }
+        .cd-input::placeholder, .cd-textarea::placeholder { color: #c4bfba; }
+        .cd-input:focus, .cd-select:focus, .cd-textarea:focus {
+          outline: none;
+          border-color: #1c1917;
+        }
+        .cd-textarea { resize: vertical; }
+        .cd-select {
+          appearance: none;
+          -webkit-appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+          padding-right: 28px;
+          cursor: pointer;
+        }
+
+        .cd-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* Range slider */
+        .cd-range { width: 100%; accent-color: #1c1917; cursor: pointer; }
+        .cd-range-labels { display: flex; justify-content: space-between; font-size:11px; font-weight:300; color:#c4bfba; margin-top:4px; }
+
+        /* Options (radio + input rows) */
+        .cd-option-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .cd-radio { accent-color: #1c1917; cursor: pointer; flex-shrink: 0; }
+        .cd-option-input {
+          flex: 1;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 400;
+          color: #1c1917;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          padding: 8px 12px;
+          transition: border-color .15s;
+        }
+        .cd-option-input::placeholder { color: #c4bfba; }
+        .cd-option-input:focus { outline: none; border-color: #1c1917; }
+        .cd-options-hint { font-size:11px; font-weight:300; color:#c4bfba; }
+
+        /* Error */
+        .cd-error {
+          border: 1px solid #fecaca;
+          background: #fef2f2;
+          border-radius: 5px;
+          padding: 10px 14px;
+          font-size: 13px;
+          font-weight: 400;
+          color: #991b1b;
+        }
+
+        /* Modal actions */
+        .cd-modal-actions { display: flex; gap: 10px; }
+        .cd-btn-cancel {
+          flex: 1;
+          padding: 11px;
+          background: #faf9f7;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #57534e;
+          cursor: pointer;
+          transition: background .12s, border-color .12s;
+          letter-spacing: .02em;
+        }
+        .cd-btn-cancel:hover { background: #f0ede8; border-color: #d6d3d1; }
+        .cd-btn-submit {
+          flex: 1;
+          padding: 11px;
+          background: #1c1917;
+          border: none;
+          border-radius: 5px;
+          font-family: 'Geist', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: #faf9f7;
+          cursor: pointer;
+          transition: background .15s;
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          letter-spacing: .02em;
+        }
+        .cd-btn-submit:hover:not(:disabled) { background: #292524; }
+        .cd-btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+        .cd-spin-icon {
+          width: 13px; height: 13px;
+          border: 1.5px solid rgba(255,255,255,.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: cdspin .7s linear infinite;
+          flex-shrink: 0;
+        }
+        @keyframes cdspin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) {
+          .cd-inner { padding: 24px 16px 60px; }
+          .cd-header { flex-direction: column; align-items: stretch; }
+          .cd-add-topic-btn { width: 100%; justify-content: center; }
+          .cd-stats { grid-template-columns: 1fr 1fr 1fr; }
+          .cd-diff-badge { display: none; }
+          .cd-field-grid-2 { grid-template-columns: 1fr; }
+        }
+      `}</style>
+
+      <div className="cd-root">
+        <div className="cd-inner">
+          {/* Back */}
+          <button
+            className="cd-back"
+            onClick={() => router.push("/instructor/courses")}
           >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-              <Icon size={15} className="text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-white font-bold text-base sm:text-lg leading-tight">
-                {value}
-              </p>
-              <p className="text-slate-500 text-xs truncate">{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+            <ArrowLeft size={13} />
+            Back to courses
+          </button>
 
-      {/* Topics list */}
-      <div>
-        <h2 className="text-white font-semibold mb-4">
-          Topics ({topics.length})
-        </h2>
-
-        {topics.length === 0 ?
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white/5 border border-white/10 rounded-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-              <Layers size={20} className="text-purple-400" />
+          {/* Header */}
+          <div className="cd-header">
+            <div className="cd-header-left">
+              <div className="cd-breadcrumb">
+                <div className="cd-breadcrumb-icon">
+                  <GraduationCap size={12} />
+                </div>
+                <span className="cd-breadcrumb-label">Course editor</span>
+              </div>
+              <h1 className="cd-title">{course?.title}</h1>
+              {course?.description && (
+                <p className="cd-desc">{course.description}</p>
+              )}
             </div>
-            <p className="text-slate-400 text-sm font-medium">No topics yet</p>
-            <p className="text-slate-600 text-xs mt-1">
-              Add your first topic to build the course
-            </p>
+            <button
+              className="cd-add-topic-btn"
+              onClick={() => setShowModal(true)}
+            >
+              <Plus size={13} />
+              Add topic
+            </button>
           </div>
-        : <div className="flex flex-col gap-3">
-            {topics.map((topic, index) => (
-              <div
-                key={topic.id}
-                className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4"
-              >
-                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium text-sm truncate">
-                    {topic.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs text-slate-500 capitalize">
-                      {topic.contentType}
-                    </span>
-                    <span className="text-slate-700">·</span>
-                    <span className="text-xs text-slate-500">
-                      Mastery: {topic.masteryThreshold}%
-                    </span>
-                  </div>
-                </div>
-                <span
-                  className={`text-xs px-2.5 py-1 rounded-full border shrink-0 hidden sm:inline-flex ${difficultyColor[topic.difficultyLevel]}`}
-                >
-                  {difficultyLabel[topic.difficultyLevel]}
-                </span>
-                <button
-                  onClick={() => {
-                    setSelectedTopicId(topic.id);
-                    setShowQuestionModal(true);
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 text-xs font-medium rounded-lg transition-colors shrink-0"
-                >
-                  <Plus size={12} />
-                  <span className="hidden sm:inline">Add question</span>
-                  <span className="sm:hidden">Add</span>
-                </button>
+
+          {/* Stats */}
+          <div className="cd-stats">
+            {[
+              { label: "Total topics", value: topics.length, icon: Layers },
+              {
+                label: "Avg difficulty",
+                value: avgDifficulty,
+                icon: GraduationCap,
+              },
+              { label: "Content types", value: contentTypes, icon: Layers },
+            ].map(({ label, value, icon: Icon }) => (
+              <div key={label} className="cd-stat">
+                <Icon size={13} className="cd-stat-icon" />
+                <div className="cd-stat-value">{value}</div>
+                <div className="cd-stat-label">{label}</div>
               </div>
             ))}
           </div>
-        }
+
+          {/* Topics */}
+          <div className="cd-topics-header">
+            <span className="cd-topics-title">Topics</span>
+            <span className="cd-topics-count">{topics.length} total</span>
+          </div>
+
+          {topics.length === 0 ?
+            <div className="cd-empty">
+              <div className="cd-empty-icon">
+                <Layers size={16} />
+              </div>
+              <div className="cd-empty-title">No topics yet</div>
+              <p className="cd-empty-desc">
+                Add your first topic to build the course.
+              </p>
+            </div>
+          : <div className="cd-topic-list">
+              {topics.map((topic, index) => (
+                <div key={topic.id} className="cd-topic-row">
+                  <div className="cd-topic-index">{index + 1}</div>
+                  <div className="cd-topic-info">
+                    <div className="cd-topic-name">{topic.title}</div>
+                    <div className="cd-topic-meta">
+                      {topic.contentType} · Mastery {topic.masteryThreshold}%
+                    </div>
+                  </div>
+                  <span className="cd-diff-badge">
+                    {difficultyLabel[topic.difficultyLevel]}
+                  </span>
+                  <button
+                    className="cd-add-q-btn"
+                    onClick={() => {
+                      setSelectedTopicId(topic.id);
+                      setShowQuestionModal(true);
+                    }}
+                  >
+                    <Plus size={11} />
+                    Add question
+                  </button>
+                </div>
+              ))}
+            </div>
+          }
+        </div>
       </div>
 
-      {/* Add topic modal */}
+      {/* ── Add topic modal ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-[#111118] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-md">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white font-bold text-lg">Add topic</h2>
+        <div
+          className="cd-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowModal(false);
+              setError("");
+            }
+          }}
+        >
+          <div className="cd-modal">
+            <div className="cd-modal-header">
+              <span className="cd-modal-title">Add topic</span>
               <button
+                className="cd-modal-close"
                 onClick={() => {
                   setShowModal(false);
                   setError("");
                 }}
-                className="text-slate-500 hover:text-white transition-colors"
               >
-                <X size={18} />
+                <X size={13} />
               </button>
             </div>
 
-            <form onSubmit={handleAddTopic} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Topic title
-                </label>
+            <form className="cd-form" onSubmit={handleAddTopic}>
+              <div className="cd-field">
+                <label className="cd-label">Topic title</label>
                 <input
+                  className="cd-input"
                   type="text"
                   placeholder="e.g. Introduction to Arrays"
                   value={form.title}
@@ -307,16 +716,14 @@ export default function CourseDetailPage() {
                     setForm((p) => ({ ...p, title: e.target.value }))
                   }
                   required
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-slate-300">
-                    Difficulty
-                  </label>
+              <div className="cd-field-grid-2">
+                <div className="cd-field">
+                  <label className="cd-label">Difficulty</label>
                   <select
+                    className="cd-select"
                     value={form.difficultyLevel}
                     onChange={(e) =>
                       setForm((p) => ({
@@ -329,21 +736,18 @@ export default function CourseDetailPage() {
                           | 5,
                       }))
                     }
-                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
                   >
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n} className="bg-[#111118]">
+                      <option key={n} value={n}>
                         {difficultyLabel[n]}
                       </option>
                     ))}
                   </select>
                 </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-slate-300">
-                    Content type
-                  </label>
+                <div className="cd-field">
+                  <label className="cd-label">Content type</label>
                   <select
+                    className="cd-select"
                     value={form.contentType}
                     onChange={(e) =>
                       setForm((p) => ({
@@ -351,13 +755,12 @@ export default function CourseDetailPage() {
                         contentType: e.target.value as Topic["contentType"],
                       }))
                     }
-                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
                   >
                     {["text", "video", "quiz", "simulation"].map((t) => (
                       <option
                         key={t}
                         value={t}
-                        className="bg-[#111118] capitalize"
+                        style={{ textTransform: "capitalize" }}
                       >
                         {t}
                       </option>
@@ -366,11 +769,12 @@ export default function CourseDetailPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
+              <div className="cd-field">
+                <label className="cd-label">
                   Mastery threshold — {form.masteryThreshold}%
                 </label>
                 <input
+                  className="cd-range"
                   type="range"
                   min={50}
                   max={100}
@@ -382,38 +786,33 @@ export default function CourseDetailPage() {
                       masteryThreshold: Number(e.target.value),
                     }))
                   }
-                  className="accent-purple-500"
                 />
-                <div className="flex justify-between text-xs text-slate-600">
+                <div className="cd-range-labels">
                   <span>50%</span>
                   <span>100%</span>
                 </div>
               </div>
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
+              {error && <div className="cd-error">{error}</div>}
 
-              <div className="flex gap-3">
+              <div className="cd-modal-actions">
                 <button
                   type="button"
+                  className="cd-btn-cancel"
                   onClick={() => {
                     setShowModal(false);
                     setError("");
                   }}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="cd-btn-submit"
                   disabled={adding}
-                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
-                  {adding && <Loader2 size={14} className="animate-spin" />}
-                  {adding ? "Adding..." : "Add topic"}
+                  {adding && <div className="cd-spin-icon" />}
+                  {adding ? "Adding…" : "Add topic"}
                 </button>
               </div>
             </form>
@@ -421,28 +820,30 @@ export default function CourseDetailPage() {
         </div>
       )}
 
-      {/* Add question modal */}
+      {/* ── Add question modal ── */}
       {showQuestionModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 px-4 py-6 sm:py-8 overflow-y-auto">
-          <div className="bg-[#111118] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-lg my-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white font-bold text-lg">
-                Add quiz question
-              </h2>
+        <div
+          className="cd-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowQuestionModal(false);
+          }}
+        >
+          <div className="cd-modal cd-modal-lg">
+            <div className="cd-modal-header">
+              <span className="cd-modal-title">Add quiz question</span>
               <button
+                className="cd-modal-close"
                 onClick={() => setShowQuestionModal(false)}
-                className="text-slate-500 hover:text-white transition-colors"
               >
-                <X size={18} />
+                <X size={13} />
               </button>
             </div>
 
-            <form onSubmit={handleAddQuestion} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Question
-                </label>
+            <form className="cd-form" onSubmit={handleAddQuestion}>
+              <div className="cd-field">
+                <label className="cd-label">Question</label>
                 <textarea
+                  className="cd-textarea"
                   placeholder="e.g. What is the time complexity of binary search?"
                   value={questionForm.question}
                   onChange={(e) =>
@@ -450,51 +851,63 @@ export default function CourseDetailPage() {
                   }
                   required
                   rows={3}
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors resize-none"
                 />
               </div>
 
-              <div className="flex flex-col gap-3">
-                <label className="text-sm font-medium text-slate-300">
-                  Answer options
-                </label>
-                {questionForm.options.map((opt, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="correct"
-                      checked={questionForm.correctIndex === i}
-                      onChange={() =>
-                        setQuestionForm((p) => ({ ...p, correctIndex: i }))
-                      }
-                      className="accent-purple-500 shrink-0"
-                    />
-                    <input
-                      type="text"
-                      placeholder={`Option ${i + 1}`}
-                      value={opt}
-                      onChange={(e) => {
-                        const opts = [...questionForm.options];
-                        opts[i] = e.target.value;
-                        setQuestionForm((p) => ({ ...p, options: opts }));
-                      }}
-                      required
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                    />
-                  </div>
-                ))}
-                <p className="text-slate-600 text-xs">
-                  Select the radio button next to the correct answer
-                </p>
+              <div className="cd-field">
+                <label className="cd-label">Answer options</label>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  {questionForm.options.map((opt, i) => (
+                    <div key={i} className="cd-option-row">
+                      <input
+                        type="radio"
+                        name="correct"
+                        className="cd-radio"
+                        checked={questionForm.correctIndex === i}
+                        onChange={() =>
+                          setQuestionForm((p) => ({ ...p, correctIndex: i }))
+                        }
+                      />
+                      <input
+                        type="text"
+                        className="cd-option-input"
+                        placeholder={`Option ${i + 1}`}
+                        value={opt}
+                        onChange={(e) => {
+                          const opts = [...questionForm.options];
+                          opts[i] = e.target.value;
+                          setQuestionForm((p) => ({ ...p, options: opts }));
+                        }}
+                        required
+                      />
+                    </div>
+                  ))}
+                  <span className="cd-options-hint">
+                    Select the radio button next to the correct answer.
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Explanation (shown after answering)
+              <div className="cd-field">
+                <label className="cd-label">
+                  Explanation{" "}
+                  <span
+                    style={{
+                      fontWeight: 300,
+                      textTransform: "none",
+                      letterSpacing: 0,
+                      color: "#c4bfba",
+                    }}
+                  >
+                    (shown after answering)
+                  </span>
                 </label>
                 <input
+                  className="cd-input"
                   type="text"
-                  placeholder="e.g. Binary search divides the search space in half each time..."
+                  placeholder="e.g. Binary search divides the search space in half each time…"
                   value={questionForm.explanation}
                   onChange={(e) =>
                     setQuestionForm((p) => ({
@@ -502,15 +915,13 @@ export default function CourseDetailPage() {
                       explanation: e.target.value,
                     }))
                   }
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-purple-500 transition-colors"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-300">
-                  Difficulty
-                </label>
+              <div className="cd-field">
+                <label className="cd-label">Difficulty</label>
                 <select
+                  className="cd-select"
                   value={questionForm.difficultyLevel}
                   onChange={(e) =>
                     setQuestionForm((p) => ({
@@ -523,45 +934,38 @@ export default function CourseDetailPage() {
                         | 5,
                     }))
                   }
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n} className="bg-[#111118]">
+                    <option key={n} value={n}>
                       {difficultyLabel[n]}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
+              {error && <div className="cd-error">{error}</div>}
 
-              <div className="flex gap-3">
+              <div className="cd-modal-actions">
                 <button
                   type="button"
+                  className="cd-btn-cancel"
                   onClick={() => setShowQuestionModal(false)}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="cd-btn-submit"
                   disabled={addingQuestion}
-                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
-                  {addingQuestion && (
-                    <Loader2 size={14} className="animate-spin" />
-                  )}
-                  {addingQuestion ? "Saving..." : "Save question"}
+                  {addingQuestion && <div className="cd-spin-icon" />}
+                  {addingQuestion ? "Saving…" : "Save question"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

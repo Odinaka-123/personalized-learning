@@ -111,60 +111,24 @@ export default function ProgressPage() {
     : 0;
 
   const stats = [
-    {
-      label: "Topics mastered",
-      value: mastered,
-      icon: Trophy,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10 border-emerald-500/20",
-    },
-    {
-      label: "In progress",
-      value: inProgress,
-      icon: TrendingUp,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10 border-blue-500/20",
-    },
-    {
-      label: "Quizzes taken",
-      value: totalSessions,
-      icon: Brain,
-      color: "text-purple-400",
-      bg: "bg-purple-500/10 border-purple-500/20",
-    },
-    {
-      label: "Avg score",
-      value: `${avgScore}%`,
-      icon: Zap,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10 border-amber-500/20",
-    },
+    { label: "Topics mastered", value: mastered, icon: Trophy },
+    { label: "In progress", value: inProgress, icon: TrendingUp },
+    { label: "Quizzes taken", value: totalSessions, icon: Brain },
+    { label: "Avg score", value: `${avgScore}%`, icon: Zap },
   ];
 
-  const getMasteryColor = (score: number) => {
-    if (score >= 70) return "bg-emerald-500";
-    if (score >= 40) return "bg-amber-500";
-    return "bg-red-500";
+  const getMasteryBarColor = (score: number) => {
+    if (score >= 70) return "#16a34a"; // stone-green
+    if (score >= 40) return "#ca8a04"; // amber
+    return "#dc2626"; // red
   };
 
   const getMasteryLabel = (p: EnrichedProgress) => {
     if (p.mastered)
-      return {
-        text: "Mastered",
-        color: "text-emerald-400",
-        bg: "bg-emerald-500/10 border-emerald-500/20",
-      };
+      return { text: "Mastered", cls: "pr-badge pr-badge--green" };
     if (p.masteryScore >= 40)
-      return {
-        text: "Learning",
-        color: "text-amber-400",
-        bg: "bg-amber-500/10 border-amber-500/20",
-      };
-    return {
-      text: "Needs work",
-      color: "text-red-400",
-      bg: "bg-red-500/10 border-red-500/20",
-    };
+      return { text: "Learning", cls: "pr-badge pr-badge--amber" };
+    return { text: "Needs work", cls: "pr-badge pr-badge--red" };
   };
 
   const formatDate = (
@@ -184,201 +148,479 @@ export default function ProgressPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <style>{`
+          .pr-spin-root { min-height:100vh; background:#faf9f7; display:flex; align-items:center; justify-content:center; }
+          .pr-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:prspin .7s linear infinite; }
+          @keyframes prspin { to { transform:rotate(360deg); } }
+        `}</style>
+        <div className="pr-spin-root">
+          <div className="pr-spinner" />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      <Sidebar />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;1,300&family=Geist:wght@300;400;500&display=swap');
 
-      <main className="flex-1 lg:ml-60 p-4 sm:p-6 lg:p-8 min-w-0">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Your progress
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Track your mastery across all topics and courses
-          </p>
-        </div>
+        .pr-root  { min-height:100vh; background:#faf9f7; display:flex; font-family:'Geist',sans-serif; color:#1c1917; }
+        .pr-main  { flex:1; margin-left:220px; min-width:0; display:flex; flex-direction:column; }
 
-        {fetching ?
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        /* ── Top bar ── */
+        .pr-topbar {
+          padding: 28px 40px 24px;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .pr-heading {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size: 26px;
+          color: #1c1917; line-height: 1.2;
+        }
+        .pr-sub { font-size:13px; font-weight:300; color:#a8a29e; margin-top:4px; }
+
+        /* ── Body ── */
+        .pr-body {
+          display: grid;
+          grid-template-columns: 260px 1fr;
+          gap: 0;
+          flex: 1;
+        }
+
+        /* ── Left panel ── */
+        .pr-left {
+          border-right: 1px solid #e7e5e4;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Stats 2×2 */
+        .pr-stats {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+        .pr-stat {
+          padding: 20px 24px;
+          border-right: 1px solid #e7e5e4;
+          border-bottom: 1px solid #e7e5e4;
+        }
+        .pr-stat:nth-child(2n)      { border-right: none; }
+        .pr-stat:nth-last-child(-n+2) { border-bottom: none; }
+        .pr-stat-icon  { color:#a8a29e; margin-bottom:10px; }
+        .pr-stat-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size:24px;
+          color:#1c1917; line-height:1;
+        }
+        .pr-stat-label { font-size:11px; font-weight:400; color:#a8a29e; margin-top:4px; }
+
+        /* Session count at bottom of left panel */
+        .pr-session-block {
+          padding: 20px 24px;
+          border-top: 1px solid #e7e5e4;
+          margin-top: auto;
+        }
+        .pr-session-label { font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:#a8a29e; margin-bottom:8px; }
+        .pr-session-value {
+          font-family: 'Fraunces', serif;
+          font-weight: 300; font-size:32px;
+          color:#1c1917; line-height:1;
+        }
+        .pr-session-sub { font-size:12px; font-weight:300; color:#c4bfba; margin-top:4px; }
+
+        /* ── Right panel ── */
+        .pr-right { padding: 28px 32px; display:flex; flex-direction:column; gap:28px; }
+
+        .pr-section-label {
+          font-size:11px; font-weight:500;
+          letter-spacing:.08em; text-transform:uppercase;
+          color:#a8a29e; margin-bottom:16px;
+        }
+
+        /* Topic mastery list */
+        .pr-topic-list { display:flex; flex-direction:column; gap:8px; }
+
+        .pr-topic-card {
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #fff;
+          padding: 14px 16px;
+        }
+
+        .pr-topic-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .pr-topic-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: #1c1917;
+        }
+        .pr-topic-course {
+          font-size: 11px;
+          font-weight: 300;
+          color: #a8a29e;
+          margin-top: 2px;
+        }
+
+        .pr-topic-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
+        .pr-topic-score {
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 18px;
+          color: #1c1917;
+        }
+
+        .pr-topic-chevron {
+          color: #a8a29e;
+          cursor: pointer;
+          transition: color .15s;
+          background: none;
+          border: none;
+          display: flex;
+          padding: 0;
+        }
+        .pr-topic-chevron:hover { color: #1c1917; }
+
+        /* Progress bar */
+        .pr-bar-track {
+          height: 3px;
+          background: #f0ede8;
+          border-radius: 99px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+        .pr-bar-fill {
+          height: 100%;
+          border-radius: 99px;
+          transition: width .3s;
+        }
+
+        .pr-topic-meta {
+          display: flex;
+          justify-content: space-between;
+        }
+        .pr-topic-meta-text {
+          font-size: 11px;
+          font-weight: 300;
+          color: #c4bfba;
+        }
+
+        /* Badges */
+        .pr-badge {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: .06em;
+          text-transform: uppercase;
+          padding: 3px 8px;
+          border-radius: 3px;
+        }
+        .pr-badge--green { color: #166534; background: #f0fdf4; }
+        .pr-badge--amber { color: #92400e; background: #fffbeb; }
+        .pr-badge--red   { color: #991b1b; background: #fef2f2; }
+
+        /* Empty state */
+        .pr-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 32px 0;
+          gap: 10px;
+        }
+        .pr-empty-icon {
+          width: 36px; height: 36px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e; background: #fff;
+        }
+        .pr-empty-title { font-size:13px; font-weight:500; color:#1c1917; }
+        .pr-empty-desc  { font-size:12px; font-weight:300; color:#a8a29e; }
+        .pr-empty-btn {
+          margin-top: 4px;
+          font-family: 'Geist', sans-serif;
+          font-size: 12px; font-weight: 500;
+          color: #faf9f7; background: #1c1917;
+          border: none; border-radius: 4px;
+          padding: 8px 18px; cursor: pointer;
+          transition: background .15s;
+          letter-spacing: .03em;
+        }
+        .pr-empty-btn:hover { background: #292524; }
+
+        /* Recent quizzes */
+        .pr-quiz-list { display:flex; flex-direction:column; gap:6px; }
+        .pr-quiz-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          border: 1px solid #e7e5e4;
+          border-radius: 6px;
+          background: #fff;
+        }
+        .pr-quiz-icon {
+          width: 32px; height: 32px;
+          border-radius: 5px;
+          border: 1px solid #e7e5e4;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .pr-quiz-icon--pass { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .pr-quiz-icon--fail { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+        .pr-quiz-name  { font-size:12px; font-weight:500; color:#1c1917; }
+        .pr-quiz-date  { font-size:11px; font-weight:300; color:#a8a29e; margin-top:1px; }
+        .pr-quiz-score {
+          margin-left: auto;
+          font-family: 'Fraunces', serif;
+          font-weight: 300;
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        .pr-quiz-score--pass { color: #166534; }
+        .pr-quiz-score--fail { color: #991b1b; }
+
+        .pr-more { font-size:12px; font-weight:300; color:#c4bfba; text-align:center; padding-top:4px; }
+
+        /* Loading */
+        .pr-loading { display:flex; align-items:center; justify-content:center; padding:80px 0; }
+        .pr-spinner { width:20px; height:20px; border:2px solid #e7e5e4; border-top-color:#1c1917; border-radius:50%; animation:prspin .7s linear infinite; }
+        @keyframes prspin { to { transform:rotate(360deg); } }
+
+        /* Two-column section row */
+        .pr-cols {
+          display: grid;
+          grid-template-columns: 1fr 280px;
+          gap: 24px;
+        }
+
+        @media (max-width:1200px) {
+          .pr-cols { grid-template-columns: 1fr; }
+        }
+        @media (max-width:1024px) {
+          .pr-main { margin-left:0; }
+          .pr-topbar { padding:20px; }
+          .pr-body { grid-template-columns:1fr; }
+          .pr-left { border-right:none; border-bottom:1px solid #e7e5e4; }
+          .pr-right { padding:20px; }
+          .pr-stats { grid-template-columns: repeat(4,1fr); }
+          .pr-stat:nth-child(2n)        { border-right:1px solid #e7e5e4; }
+          .pr-stat:nth-child(4n)        { border-right:none; }
+          .pr-stat:nth-last-child(-n+2) { border-bottom:1px solid #e7e5e4; }
+          .pr-stat:last-child           { border-bottom:none; }
+        }
+        @media (max-width:600px) {
+          .pr-stats { grid-template-columns:1fr 1fr; }
+          .pr-stat:nth-child(2n) { border-right:none; }
+        }
+      `}</style>
+
+      <div className="pr-root">
+        <Sidebar />
+
+        <main className="pr-main">
+          {/* Top bar */}
+          <div className="pr-topbar">
+            <h1 className="pr-heading">Your progress</h1>
+            <p className="pr-sub">
+              Track your mastery across all topics and courses.
+            </p>
           </div>
-        : <>
-            {/* Stats — 2 cols on mobile, 4 on lg+ */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-              {stats.map(({ label, value, icon: Icon, color, bg }) => (
-                <div
-                  key={label}
-                  className={`rounded-2xl border p-4 sm:p-5 ${bg} flex flex-col gap-3`}
-                >
-                  <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
-                    <Icon size={18} className={color} />
-                  </div>
-                  <div>
-                    <p className="text-xl sm:text-2xl font-bold text-white">
-                      {value}
-                    </p>
-                    <p className="text-slate-500 text-xs mt-0.5">{label}</p>
+
+          {fetching ?
+            <div className="pr-loading">
+              <div className="pr-spinner" />
+            </div>
+          : <div className="pr-body">
+              {/* ── Left panel: stats ── */}
+              <div className="pr-left">
+                <div className="pr-stats">
+                  {stats.map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="pr-stat">
+                      <Icon size={14} className="pr-stat-icon" />
+                      <div className="pr-stat-value">{value}</div>
+                      <div className="pr-stat-label">{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recent quizzes count */}
+                <div className="pr-session-block">
+                  <div className="pr-session-label">Recent quizzes</div>
+                  <div className="pr-session-value">{totalSessions}</div>
+                  <div className="pr-session-sub">
+                    Total quiz sessions completed
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Topic mastery + recent quizzes */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
-                <h2 className="text-white font-semibold mb-5">Topic mastery</h2>
+              {/* ── Right panel ── */}
+              <div className="pr-right">
+                <div className="pr-cols">
+                  {/* Topic mastery */}
+                  <div>
+                    <div className="pr-section-label">Topic mastery</div>
 
-                {progress.length === 0 ?
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-                      <BookOpen size={20} className="text-purple-400" />
-                    </div>
-                    <p className="text-slate-400 text-sm font-medium">
-                      No progress yet
-                    </p>
-                    <p className="text-slate-600 text-xs mt-1">
-                      Take a quiz to start tracking your mastery
-                    </p>
-                    <button
-                      onClick={() => router.push("/learn")}
-                      className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-xl transition-colors"
-                    >
-                      Browse courses
-                    </button>
-                  </div>
-                : <div className="flex flex-col gap-3">
-                    {progress.map((p) => {
-                      const label = getMasteryLabel(p);
-                      return (
-                        <div
-                          key={p.topicId}
-                          className="bg-white/5 border border-white/5 rounded-xl p-4"
+                    {progress.length === 0 ?
+                      <div className="pr-empty">
+                        <div className="pr-empty-icon">
+                          <BookOpen size={16} />
+                        </div>
+                        <div className="pr-empty-title">No progress yet</div>
+                        <div className="pr-empty-desc">
+                          Take a quiz to start tracking your mastery.
+                        </div>
+                        <button
+                          onClick={() => router.push("/learn")}
+                          className="pr-empty-btn"
                         >
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-white text-sm font-medium truncate">
-                                  {p.topicTitle}
+                          Browse courses
+                        </button>
+                      </div>
+                    : <div className="pr-topic-list">
+                        {progress.map((p) => {
+                          const label = getMasteryLabel(p);
+                          return (
+                            <div key={p.topicId} className="pr-topic-card">
+                              <div className="pr-topic-row">
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <span className="pr-topic-name">
+                                      {p.topicTitle}
+                                    </span>
+                                    <span className={label.cls}>
+                                      {label.text}
+                                    </span>
+                                  </div>
+                                  <div className="pr-topic-course">
+                                    {p.courseTitle}
+                                  </div>
+                                </div>
+                                <div className="pr-topic-right">
+                                  <span className="pr-topic-score">
+                                    {p.masteryScore}%
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      router.push(`/learn/${p.courseId}`)
+                                    }
+                                    className="pr-topic-chevron"
+                                    aria-label="Go to course"
+                                  >
+                                    <ChevronRight size={15} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="pr-bar-track">
+                                <div
+                                  className="pr-bar-fill"
+                                  style={{
+                                    width: `${p.masteryScore}%`,
+                                    background: getMasteryBarColor(
+                                      p.masteryScore,
+                                    ),
+                                  }}
+                                />
+                              </div>
+                              <div className="pr-topic-meta">
+                                <span className="pr-topic-meta-text">
+                                  {p.attempts} attempt
+                                  {p.attempts !== 1 ? "s" : ""}
                                 </span>
-                                <span
-                                  className={`text-xs border px-2 py-0.5 rounded-full shrink-0 ${label.bg} ${label.color}`}
-                                >
-                                  {label.text}
+                                <span className="pr-topic-meta-text">
+                                  {formatDate(p.lastAttemptAt)}
                                 </span>
                               </div>
-                              <p className="text-slate-600 text-xs mt-0.5">
-                                {p.courseTitle}
-                              </p>
                             </div>
-                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                              <span className="text-white font-bold text-sm">
-                                {p.masteryScore}%
-                              </span>
-                              <button
-                                onClick={() =>
-                                  router.push(`/learn/${p.courseId}`)
-                                }
-                                className="text-purple-400 hover:text-purple-300 transition-colors"
+                          );
+                        })}
+                      </div>
+                    }
+                  </div>
+
+                  {/* Recent quizzes */}
+                  <div>
+                    <div className="pr-section-label">Recent quizzes</div>
+
+                    {sessions.length === 0 ?
+                      <div className="pr-empty">
+                        <div className="pr-empty-icon">
+                          <Clock size={16} />
+                        </div>
+                        <div className="pr-empty-title">No quizzes yet</div>
+                        <div className="pr-empty-desc">
+                          Completed quizzes appear here.
+                        </div>
+                      </div>
+                    : <div className="pr-quiz-list">
+                        {sessions.slice(0, 8).map((s) => {
+                          const passed = (s.score ?? 0) >= 70;
+                          return (
+                            <div key={s.id} className="pr-quiz-row">
+                              <div
+                                className={`pr-quiz-icon ${passed ? "pr-quiz-icon--pass" : "pr-quiz-icon--fail"}`}
                               >
-                                <ChevronRight size={16} />
-                              </button>
+                                {passed ?
+                                  <CheckCircle2 size={13} />
+                                : <XCircle size={13} />}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div
+                                  className="pr-quiz-name"
+                                  style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {topicMap[s.topicId] ?? "Quiz"}
+                                </div>
+                                <div className="pr-quiz-date">
+                                  {formatDate(s.startedAt)}
+                                </div>
+                              </div>
+                              <span
+                                className={`pr-quiz-score ${passed ? "pr-quiz-score--pass" : "pr-quiz-score--fail"}`}
+                              >
+                                {s.score ?? 0}%
+                              </span>
                             </div>
-                          </div>
-                          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${getMasteryColor(p.masteryScore)}`}
-                              style={{ width: `${p.masteryScore}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between mt-1.5">
-                            <span className="text-slate-600 text-xs">
-                              {p.attempts} attempt{p.attempts !== 1 ? "s" : ""}
-                            </span>
-                            <span className="text-slate-600 text-xs">
-                              {formatDate(p.lastAttemptAt)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                        {sessions.length > 8 && (
+                          <p className="pr-more">
+                            +{sessions.length - 8} more sessions
+                          </p>
+                        )}
+                      </div>
+                    }
                   </div>
-                }
-              </div>
-
-              {/* Recent quizzes */}
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6">
-                <h2 className="text-white font-semibold mb-5">
-                  Recent quizzes
-                </h2>
-
-                {sessions.length === 0 ?
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mb-3">
-                      <Clock size={20} className="text-teal-400" />
-                    </div>
-                    <p className="text-slate-400 text-sm font-medium">
-                      No quizzes yet
-                    </p>
-                    <p className="text-slate-600 text-xs mt-1">
-                      Completed quizzes appear here
-                    </p>
-                  </div>
-                : <div className="flex flex-col gap-3">
-                    {sessions.slice(0, 8).map((s) => {
-                      const passed = (s.score ?? 0) >= 70;
-                      return (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5"
-                        >
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                              passed ?
-                                "bg-emerald-500/10 border border-emerald-500/20"
-                              : "bg-red-500/10 border border-red-500/20"
-                            }`}
-                          >
-                            {passed ?
-                              <CheckCircle2
-                                size={14}
-                                className="text-emerald-400"
-                              />
-                            : <XCircle size={14} className="text-red-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-medium truncate">
-                              {topicMap[s.topicId] ?? "Quiz"}
-                            </p>
-                            <p className="text-slate-600 text-xs">
-                              {formatDate(s.startedAt)}
-                            </p>
-                          </div>
-                          <span
-                            className={`text-xs font-bold shrink-0 ${passed ? "text-emerald-400" : "text-red-400"}`}
-                          >
-                            {s.score ?? 0}%
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {sessions.length > 8 && (
-                      <p className="text-slate-600 text-xs text-center pt-1">
-                        +{sessions.length - 8} more sessions
-                      </p>
-                    )}
-                  </div>
-                }
+                </div>
               </div>
             </div>
-          </>
-        }
-      </main>
-    </div>
+          }
+        </main>
+      </div>
+    </>
   );
 }
