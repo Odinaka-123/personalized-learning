@@ -9,6 +9,9 @@ import {
   getCourseTopics,
   addQuizQuestion,
 } from "@/lib/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Course, Topic } from "@/types";
 import {
   GraduationCap,
@@ -36,6 +39,8 @@ export default function CourseDetailPage() {
   const [showModal, setShowModal] = useState(false);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     title: "",
     difficultyLevel: 1 as 1 | 2 | 3 | 4 | 5,
@@ -81,9 +86,29 @@ export default function CourseDetailPage() {
         masteryThreshold: form.masteryThreshold,
         prerequisiteIds: [],
       });
+
+      // Upload file if one was selected
+      if (uploadFile && id) {
+        setUploading(true);
+        const storage = getStorage();
+        const fileRef = ref(
+          storage,
+          `courses/${courseId}/topics/${id}/${uploadFile.name}`
+        );
+        const snap = await uploadBytes(fileRef, uploadFile);
+        const url  = await getDownloadURL(snap.ref);
+        await updateDoc(doc(db, "topics", id), {
+          contentUrl:      url,
+          contentFileName: uploadFile.name,
+          contentFileType: uploadFile.type,
+        });
+        setUploading(false);
+      }
+
       const newTopic: Topic = { id, courseId, ...form, prerequisiteIds: [] };
       setTopics((prev) => [...prev, newTopic]);
       setShowModal(false);
+      setUploadFile(null);
       setForm({
         title: "",
         difficultyLevel: 1,
@@ -92,6 +117,7 @@ export default function CourseDetailPage() {
       });
     } catch {
       setError("Failed to add topic. Please try again.");
+      setUploading(false);
     } finally {
       setAdding(false);
     }
@@ -141,13 +167,10 @@ export default function CourseDetailPage() {
   }
 
   const avgDifficulty =
-    topics.length ?
-      (
-        topics.reduce((a, t) => a + t.difficultyLevel, 0) / topics.length
-      ).toFixed(1)
-    : "—";
-  const contentTypes =
-    [...new Set(topics.map((t) => t.contentType))].length || "—";
+    topics.length
+      ? (topics.reduce((a, t) => a + t.difficultyLevel, 0) / topics.length).toFixed(1)
+      : "—";
+  const contentTypes = [...new Set(topics.map((t) => t.contentType))].length || "—";
 
   return (
     <>
@@ -169,7 +192,6 @@ export default function CourseDetailPage() {
           padding: 40px 32px 80px;
         }
 
-        /* ── Back ── */
         .cd-back {
           display: inline-flex;
           align-items: center;
@@ -187,7 +209,6 @@ export default function CourseDetailPage() {
         }
         .cd-back:hover { color: #1c1917; }
 
-        /* ── Header ── */
         .cd-header {
           display: flex;
           align-items: flex-start;
@@ -251,7 +272,6 @@ export default function CourseDetailPage() {
         }
         .cd-add-topic-btn:hover { background: #292524; }
 
-        /* ── Stats ── */
         .cd-stats {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -283,7 +303,6 @@ export default function CourseDetailPage() {
           margin-top: 4px;
         }
 
-        /* ── Topics ── */
         .cd-topics-header {
           display: flex;
           align-items: center;
@@ -375,7 +394,6 @@ export default function CourseDetailPage() {
         }
         .cd-add-q-btn:hover { background: #edeae6; border-color: #d6d3d1; color: #1c1917; }
 
-        /* ── Empty ── */
         .cd-empty {
           border: 1px solid #e7e5e4;
           border-radius: 8px;
@@ -399,7 +417,6 @@ export default function CourseDetailPage() {
         .cd-empty-title { font-size:13px; font-weight:500; color:#1c1917; }
         .cd-empty-desc  { font-size:12px; font-weight:300; color:#a8a29e; }
 
-        /* ── Modal overlay ── */
         .cd-overlay {
           position: fixed;
           inset: 0;
@@ -447,7 +464,6 @@ export default function CourseDetailPage() {
         }
         .cd-modal-close:hover { background: #edeae6; color: #1c1917; }
 
-        /* Form elements */
         .cd-form { display: flex; flex-direction: column; gap: 18px; }
         .cd-field { display: flex; flex-direction: column; gap: 6px; }
         .cd-label {
@@ -487,11 +503,92 @@ export default function CourseDetailPage() {
 
         .cd-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-        /* Range slider */
         .cd-range { width: 100%; accent-color: #1c1917; cursor: pointer; }
         .cd-range-labels { display: flex; justify-content: space-between; font-size:11px; font-weight:300; color:#c4bfba; margin-top:4px; }
 
-        /* Options (radio + input rows) */
+        /* ── File upload zone ── */
+        .cd-upload-zone {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          border: 1px dashed #e7e5e4;
+          border-radius: 5px;
+          padding: 14px;
+          cursor: pointer;
+          background: #faf9f7;
+          transition: border-color .15s, background .15s;
+          width: 100%;
+          text-align: left;
+        }
+        .cd-upload-zone:hover {
+          border-color: #d6d3d1;
+          background: #f5f4f2;
+        }
+        .cd-upload-zone.has-file {
+          border-color: #d6d3d1;
+          background: #f5f4f2;
+        }
+        .cd-upload-icon {
+          width: 32px; height: 32px;
+          border: 1px solid #e7e5e4;
+          border-radius: 5px;
+          background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          color: #a8a29e;
+          flex-shrink: 0;
+        }
+        .cd-upload-text-main {
+          font-size: 12px;
+          font-weight: 500;
+          color: #57534e;
+        }
+        .cd-upload-text-sub {
+          font-size: 11px;
+          font-weight: 300;
+          color: #c4bfba;
+          margin-top: 2px;
+        }
+        .cd-upload-clear {
+          margin-left: auto;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #a8a29e;
+          display: flex;
+          align-items: center;
+          padding: 2px;
+          transition: color .12s;
+          flex-shrink: 0;
+        }
+        .cd-upload-clear:hover { color: #1c1917; }
+        .cd-upload-meta {
+          font-size: 11px;
+          font-weight: 300;
+          color: #a8a29e;
+          margin-top: 4px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .cd-uploading-bar {
+          height: 2px;
+          background: #e7e5e4;
+          border-radius: 1px;
+          overflow: hidden;
+          margin-top: 6px;
+        }
+        .cd-uploading-fill {
+          height: 100%;
+          width: 60%;
+          background: #1c1917;
+          border-radius: 1px;
+          animation: cdslide 1s ease-in-out infinite alternate;
+        }
+        @keyframes cdslide {
+          from { transform: translateX(-100%); }
+          to   { transform: translateX(200%); }
+        }
+
         .cd-option-row {
           display: flex;
           align-items: center;
@@ -514,7 +611,6 @@ export default function CourseDetailPage() {
         .cd-option-input:focus { outline: none; border-color: #1c1917; }
         .cd-options-hint { font-size:11px; font-weight:300; color:#c4bfba; }
 
-        /* Error */
         .cd-error {
           border: 1px solid #fecaca;
           background: #fef2f2;
@@ -525,7 +621,6 @@ export default function CourseDetailPage() {
           color: #991b1b;
         }
 
-        /* Modal actions */
         .cd-modal-actions { display: flex; gap: 10px; }
         .cd-btn-cancel {
           flex: 1;
@@ -582,16 +677,11 @@ export default function CourseDetailPage() {
 
       <div className="cd-root">
         <div className="cd-inner">
-          {/* Back */}
-          <button
-            className="cd-back"
-            onClick={() => router.push("/instructor/courses")}
-          >
+          <button className="cd-back" onClick={() => router.push("/instructor/courses")}>
             <ArrowLeft size={13} />
             Back to courses
           </button>
 
-          {/* Header */}
           <div className="cd-header">
             <div className="cd-header-left">
               <div className="cd-breadcrumb">
@@ -601,29 +691,19 @@ export default function CourseDetailPage() {
                 <span className="cd-breadcrumb-label">Course editor</span>
               </div>
               <h1 className="cd-title">{course?.title}</h1>
-              {course?.description && (
-                <p className="cd-desc">{course.description}</p>
-              )}
+              {course?.description && <p className="cd-desc">{course.description}</p>}
             </div>
-            <button
-              className="cd-add-topic-btn"
-              onClick={() => setShowModal(true)}
-            >
+            <button className="cd-add-topic-btn" onClick={() => setShowModal(true)}>
               <Plus size={13} />
               Add topic
             </button>
           </div>
 
-          {/* Stats */}
           <div className="cd-stats">
             {[
-              { label: "Total topics", value: topics.length, icon: Layers },
-              {
-                label: "Avg difficulty",
-                value: avgDifficulty,
-                icon: GraduationCap,
-              },
-              { label: "Content types", value: contentTypes, icon: Layers },
+              { label: "Total topics",   value: topics.length,  icon: Layers       },
+              { label: "Avg difficulty", value: avgDifficulty,  icon: GraduationCap},
+              { label: "Content types",  value: contentTypes,   icon: Layers       },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="cd-stat">
                 <Icon size={13} className="cd-stat-icon" />
@@ -633,23 +713,19 @@ export default function CourseDetailPage() {
             ))}
           </div>
 
-          {/* Topics */}
           <div className="cd-topics-header">
             <span className="cd-topics-title">Topics</span>
             <span className="cd-topics-count">{topics.length} total</span>
           </div>
 
-          {topics.length === 0 ?
+          {topics.length === 0 ? (
             <div className="cd-empty">
-              <div className="cd-empty-icon">
-                <Layers size={16} />
-              </div>
+              <div className="cd-empty-icon"><Layers size={16} /></div>
               <div className="cd-empty-title">No topics yet</div>
-              <p className="cd-empty-desc">
-                Add your first topic to build the course.
-              </p>
+              <p className="cd-empty-desc">Add your first topic to build the course.</p>
             </div>
-          : <div className="cd-topic-list">
+          ) : (
+            <div className="cd-topic-list">
               {topics.map((topic, index) => (
                 <div key={topic.id} className="cd-topic-row">
                   <div className="cd-topic-index">{index + 1}</div>
@@ -659,47 +735,32 @@ export default function CourseDetailPage() {
                       {topic.contentType} · Mastery {topic.masteryThreshold}%
                     </div>
                   </div>
-                  <span className="cd-diff-badge">
-                    {difficultyLabel[topic.difficultyLevel]}
-                  </span>
-                  <button
-                    className="cd-add-q-btn"
-                    onClick={() => {
-                      setSelectedTopicId(topic.id);
-                      setShowQuestionModal(true);
-                    }}
-                  >
+                  <span className="cd-diff-badge">{difficultyLabel[topic.difficultyLevel]}</span>
+                  <button className="cd-add-q-btn" onClick={() => {
+                    setSelectedTopicId(topic.id);
+                    setShowQuestionModal(true);
+                  }}>
                     <Plus size={11} />
                     Add question
                   </button>
                 </div>
               ))}
             </div>
-          }
+          )}
         </div>
       </div>
 
       {/* ── Add topic modal ── */}
       {showModal && (
-        <div
-          className="cd-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowModal(false);
-              setError("");
-            }
-          }}
-        >
+        <div className="cd-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) { setShowModal(false); setError(""); setUploadFile(null); }
+        }}>
           <div className="cd-modal">
             <div className="cd-modal-header">
               <span className="cd-modal-title">Add topic</span>
-              <button
-                className="cd-modal-close"
-                onClick={() => {
-                  setShowModal(false);
-                  setError("");
-                }}
-              >
+              <button className="cd-modal-close" onClick={() => {
+                setShowModal(false); setError(""); setUploadFile(null);
+              }}>
                 <X size={13} />
               </button>
             </div>
@@ -707,112 +768,105 @@ export default function CourseDetailPage() {
             <form className="cd-form" onSubmit={handleAddTopic}>
               <div className="cd-field">
                 <label className="cd-label">Topic title</label>
-                <input
-                  className="cd-input"
-                  type="text"
+                <input className="cd-input" type="text"
                   placeholder="e.g. Introduction to Arrays"
                   value={form.title}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, title: e.target.value }))
-                  }
-                  required
-                />
+                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  required />
               </div>
 
               <div className="cd-field-grid-2">
                 <div className="cd-field">
                   <label className="cd-label">Difficulty</label>
-                  <select
-                    className="cd-select"
-                    value={form.difficultyLevel}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        difficultyLevel: Number(e.target.value) as
-                          | 1
-                          | 2
-                          | 3
-                          | 4
-                          | 5,
-                      }))
-                    }
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>
-                        {difficultyLabel[n]}
-                      </option>
+                  <select className="cd-select" value={form.difficultyLevel}
+                    onChange={(e) => setForm((p) => ({ ...p, difficultyLevel: Number(e.target.value) as 1|2|3|4|5 }))}>
+                    {[1,2,3,4,5].map((n) => (
+                      <option key={n} value={n}>{difficultyLabel[n]}</option>
                     ))}
                   </select>
                 </div>
                 <div className="cd-field">
                   <label className="cd-label">Content type</label>
-                  <select
-                    className="cd-select"
-                    value={form.contentType}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        contentType: e.target.value as Topic["contentType"],
-                      }))
-                    }
-                  >
-                    {["text", "video", "quiz", "simulation"].map((t) => (
-                      <option
-                        key={t}
-                        value={t}
-                        style={{ textTransform: "capitalize" }}
-                      >
-                        {t}
-                      </option>
+                  <select className="cd-select" value={form.contentType}
+                    onChange={(e) => setForm((p) => ({ ...p, contentType: e.target.value as Topic["contentType"] }))}>
+                    {["text","video","quiz","simulation"].map((t) => (
+                      <option key={t} value={t} style={{textTransform:"capitalize"}}>{t}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
               <div className="cd-field">
-                <label className="cd-label">
-                  Mastery threshold — {form.masteryThreshold}%
-                </label>
-                <input
-                  className="cd-range"
-                  type="range"
-                  min={50}
-                  max={100}
-                  step={5}
+                <label className="cd-label">Mastery threshold — {form.masteryThreshold}%</label>
+                <input className="cd-range" type="range" min={50} max={100} step={5}
                   value={form.masteryThreshold}
-                  onChange={(e) =>
-                    setForm((p) => ({
-                      ...p,
-                      masteryThreshold: Number(e.target.value),
-                    }))
-                  }
-                />
-                <div className="cd-range-labels">
-                  <span>50%</span>
-                  <span>100%</span>
-                </div>
+                  onChange={(e) => setForm((p) => ({ ...p, masteryThreshold: Number(e.target.value) }))} />
+                <div className="cd-range-labels"><span>50%</span><span>100%</span></div>
+              </div>
+
+              {/* ── File upload ── */}
+              <div className="cd-field">
+                <label className="cd-label">
+                  Content file{" "}
+                  <span style={{fontWeight:300,textTransform:"none",letterSpacing:0,color:"#c4bfba"}}>
+                    (optional)
+                  </span>
+                </label>
+                <label className={`cd-upload-zone${uploadFile ? " has-file" : ""}`}>
+                  <div className="cd-upload-icon">
+                    {uploadFile ? (
+                      uploadFile.type.startsWith("video") ? (
+                        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                      )
+                    ) : (
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="cd-upload-text-main">
+                      {uploadFile ? uploadFile.name : "Upload PDF or video"}
+                    </div>
+                    <div className="cd-upload-text-sub">
+                      {uploadFile
+                        ? `${(uploadFile.size / 1024 / 1024).toFixed(1)} MB`
+                        : "PDF, MP4, MOV · max 50 MB"}
+                    </div>
+                  </div>
+                  <input type="file" accept=".pdf,video/*" style={{display:"none"}}
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
+                  {uploadFile && (
+                    <button type="button" className="cd-upload-clear"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setUploadFile(null); }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </label>
+                {uploading && (
+                  <div className="cd-uploading-bar">
+                    <div className="cd-uploading-fill" />
+                  </div>
+                )}
               </div>
 
               {error && <div className="cd-error">{error}</div>}
 
               <div className="cd-modal-actions">
-                <button
-                  type="button"
-                  className="cd-btn-cancel"
-                  onClick={() => {
-                    setShowModal(false);
-                    setError("");
-                  }}
-                >
+                <button type="button" className="cd-btn-cancel" onClick={() => {
+                  setShowModal(false); setError(""); setUploadFile(null);
+                }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="cd-btn-submit"
-                  disabled={adding}
-                >
-                  {adding && <div className="cd-spin-icon" />}
-                  {adding ? "Adding…" : "Add topic"}
+                <button type="submit" className="cd-btn-submit" disabled={adding || uploading}>
+                  {(adding || uploading) && <div className="cd-spin-icon" />}
+                  {uploading ? "Uploading…" : adding ? "Adding…" : "Add topic"}
                 </button>
               </div>
             </form>
@@ -822,19 +876,13 @@ export default function CourseDetailPage() {
 
       {/* ── Add question modal ── */}
       {showQuestionModal && (
-        <div
-          className="cd-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowQuestionModal(false);
-          }}
-        >
+        <div className="cd-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) setShowQuestionModal(false);
+        }}>
           <div className="cd-modal cd-modal-lg">
             <div className="cd-modal-header">
               <span className="cd-modal-title">Add quiz question</span>
-              <button
-                className="cd-modal-close"
-                onClick={() => setShowQuestionModal(false)}
-              >
+              <button className="cd-modal-close" onClick={() => setShowQuestionModal(false)}>
                 <X size={13} />
               </button>
             </div>
@@ -842,103 +890,53 @@ export default function CourseDetailPage() {
             <form className="cd-form" onSubmit={handleAddQuestion}>
               <div className="cd-field">
                 <label className="cd-label">Question</label>
-                <textarea
-                  className="cd-textarea"
+                <textarea className="cd-textarea"
                   placeholder="e.g. What is the time complexity of binary search?"
                   value={questionForm.question}
-                  onChange={(e) =>
-                    setQuestionForm((p) => ({ ...p, question: e.target.value }))
-                  }
-                  required
-                  rows={3}
-                />
+                  onChange={(e) => setQuestionForm((p) => ({ ...p, question: e.target.value }))}
+                  required rows={3} />
               </div>
 
               <div className="cd-field">
                 <label className="cd-label">Answer options</label>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {questionForm.options.map((opt, i) => (
                     <div key={i} className="cd-option-row">
-                      <input
-                        type="radio"
-                        name="correct"
-                        className="cd-radio"
+                      <input type="radio" name="correct" className="cd-radio"
                         checked={questionForm.correctIndex === i}
-                        onChange={() =>
-                          setQuestionForm((p) => ({ ...p, correctIndex: i }))
-                        }
-                      />
-                      <input
-                        type="text"
-                        className="cd-option-input"
-                        placeholder={`Option ${i + 1}`}
-                        value={opt}
+                        onChange={() => setQuestionForm((p) => ({ ...p, correctIndex: i }))} />
+                      <input type="text" className="cd-option-input"
+                        placeholder={`Option ${i + 1}`} value={opt} required
                         onChange={(e) => {
                           const opts = [...questionForm.options];
                           opts[i] = e.target.value;
                           setQuestionForm((p) => ({ ...p, options: opts }));
-                        }}
-                        required
-                      />
+                        }} />
                     </div>
                   ))}
-                  <span className="cd-options-hint">
-                    Select the radio button next to the correct answer.
-                  </span>
+                  <span className="cd-options-hint">Select the radio button next to the correct answer.</span>
                 </div>
               </div>
 
               <div className="cd-field">
                 <label className="cd-label">
                   Explanation{" "}
-                  <span
-                    style={{
-                      fontWeight: 300,
-                      textTransform: "none",
-                      letterSpacing: 0,
-                      color: "#c4bfba",
-                    }}
-                  >
+                  <span style={{fontWeight:300,textTransform:"none",letterSpacing:0,color:"#c4bfba"}}>
                     (shown after answering)
                   </span>
                 </label>
-                <input
-                  className="cd-input"
-                  type="text"
+                <input className="cd-input" type="text"
                   placeholder="e.g. Binary search divides the search space in half each time…"
                   value={questionForm.explanation}
-                  onChange={(e) =>
-                    setQuestionForm((p) => ({
-                      ...p,
-                      explanation: e.target.value,
-                    }))
-                  }
-                />
+                  onChange={(e) => setQuestionForm((p) => ({ ...p, explanation: e.target.value }))} />
               </div>
 
               <div className="cd-field">
                 <label className="cd-label">Difficulty</label>
-                <select
-                  className="cd-select"
-                  value={questionForm.difficultyLevel}
-                  onChange={(e) =>
-                    setQuestionForm((p) => ({
-                      ...p,
-                      difficultyLevel: Number(e.target.value) as
-                        | 1
-                        | 2
-                        | 3
-                        | 4
-                        | 5,
-                    }))
-                  }
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {difficultyLabel[n]}
-                    </option>
+                <select className="cd-select" value={questionForm.difficultyLevel}
+                  onChange={(e) => setQuestionForm((p) => ({ ...p, difficultyLevel: Number(e.target.value) as 1|2|3|4|5 }))}>
+                  {[1,2,3,4,5].map((n) => (
+                    <option key={n} value={n}>{difficultyLabel[n]}</option>
                   ))}
                 </select>
               </div>
@@ -946,18 +944,10 @@ export default function CourseDetailPage() {
               {error && <div className="cd-error">{error}</div>}
 
               <div className="cd-modal-actions">
-                <button
-                  type="button"
-                  className="cd-btn-cancel"
-                  onClick={() => setShowQuestionModal(false)}
-                >
+                <button type="button" className="cd-btn-cancel" onClick={() => setShowQuestionModal(false)}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="cd-btn-submit"
-                  disabled={addingQuestion}
-                >
+                <button type="submit" className="cd-btn-submit" disabled={addingQuestion}>
                   {addingQuestion && <div className="cd-spin-icon" />}
                   {addingQuestion ? "Saving…" : "Save question"}
                 </button>
